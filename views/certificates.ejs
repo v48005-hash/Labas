@@ -1,0 +1,30 @@
+<%- include('partials/head') %>
+<%- include('partials/header') %>
+
+<div class="page-head"><h1>Mano pažymėjimai</h1></div>
+
+<% if (certs.length === 0) { %>
+  <div class="empty">Kol kas neturite pažymėjimų. Išlaikykite kurso testą ir pažymėjimas atsiras čia.</div>
+<% } else { %>
+  <div class="cert-grid">
+    <% certs.forEach(function(c){
+         var expired = c.expires_at && new Date(c.expires_at) < new Date(); %>
+      <div class="card cert <%= expired ? 'expired' : '' %>">
+        <div class="cert-top">
+          <span class="chip"><%= c.category %></span>
+          <% if (expired) { %><span class="chip chip-red">Nebegalioja</span>
+          <% } else { %><span class="chip chip-green">Galioja</span><% } %>
+        </div>
+        <h3><%= c.title %></h3>
+        <div class="cert-code"><%= c.code %></div>
+        <div class="cert-meta muted small">
+          Išduota: <%= formatDate(c.issued_at) %><br>
+          Galioja iki: <%= formatDate(c.expires_at) %>
+        </div>
+        <a class="muted small" href="/tikrinti?kodas=<%= c.code %>">Tikrinti viešai →</a>
+      </div>
+    <% }) %>
+  </div>
+<% } %>
+
+<%- include('partials/footer') %>

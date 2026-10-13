@@ -1,0 +1,45 @@
+<%- include('partials/head') %>
+<%- include('partials/header') %>
+
+<div class="auth-wrap">
+  <div class="card auth-card wide">
+    <h1>Registracija</h1>
+    <p class="muted">Kuriate naują įmonę? Užpildykite „Įmonės pavadinimą" — tapsite administratoriumi.
+      Prisijungiate prie esamos įmonės? Įveskite gautą <strong>prisijungimo kodą</strong>.</p>
+    <% if (error) { %><div class="flash flash-error"><%= error %></div><% } %>
+    <form method="post" action="/registruotis" class="form">
+      <div class="grid-2">
+        <label>Vardas ir pavardė *
+          <input name="full_name" value="<%= form.full_name || '' %>" required>
+        </label>
+        <label>Pareigos
+          <input name="position" value="<%= form.position || '' %>" placeholder="pvz. operatorius">
+        </label>
+      </div>
+      <label>El. paštas *
+        <input type="email" name="email" value="<%= form.email || '' %>" required>
+      </label>
+      <div class="grid-2">
+        <label>Slaptažodis *
+          <input type="password" name="password" required minlength="6">
+        </label>
+        <label>Pakartokite slaptažodį *
+          <input type="password" name="password2" required minlength="6">
+        </label>
+      </div>
+      <hr class="soft">
+      <div class="grid-2">
+        <label>Įmonės pavadinimas <span class="muted small">(nauja įmonė)</span>
+          <input name="company_name" value="<%= form.company_name || '' %>" placeholder="UAB „Pavyzdys"">
+        </label>
+        <label>Prisijungimo kodas <span class="muted small">(esama įmonė)</span>
+          <input name="join_code" value="<%= form.join_code || '' %>" placeholder="pvz. pavyzdys-ab12">
+        </label>
+      </div>
+      <button class="btn btn-primary btn-block">Sukurti paskyrą</button>
+    </form>
+    <p class="muted center">Jau turite paskyrą? <a href="/prisijungti">Prisijunkite</a></p>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

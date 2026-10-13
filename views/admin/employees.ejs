@@ -1,0 +1,56 @@
+<%- include('../partials/head') %>
+<%- include('../partials/header') %>
+
+<div class="page-head">
+  <div><h1>Darbuotojai</h1>
+    <p class="muted">Darbuotojai gali registruotis patys su įmonės kodu
+      <code><%= currentCompany ? currentCompany.code : '' %></code> arba pridėkite juos čia.</p>
+  </div>
+</div>
+
+<% if (error) { %><div class="flash flash-error"><%= error %></div><% } %>
+<% if (created) { %>
+  <div class="flash flash-success">
+    Darbuotojas sukurtas. Prisijungimo duomenys:
+    <strong><%= created.email %></strong> / <strong><%= created.password %></strong>
+    — perduokite juos darbuotojui (slaptažodį pataria pasikeisti).
+  </div>
+<% } %>
+
+<div class="form-cols">
+  <div class="card">
+    <% if (employees.length === 0) { %>
+      <p class="muted">Darbuotojų dar nėra.</p>
+    <% } else { %>
+      <table class="table">
+        <thead><tr><th>Vardas</th><th>Pareigos</th><th>El. paštas</th><th>Progresas</th><th>Rolė</th></tr></thead>
+        <tbody>
+          <% employees.forEach(function(e){ %>
+            <tr>
+              <td><strong><%= e.full_name %></strong></td>
+              <td class="muted"><%= e.position || '—' %></td>
+              <td class="muted small"><%= e.email %></td>
+              <td><%= e.passed %>/<%= e.assigned %></td>
+              <td><% if (e.role === 'admin') { %><span class="chip chip-blue">Admin</span>
+                  <% } else { %><span class="chip chip-gray">Darbuotojas</span><% } %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+
+  <div class="card">
+    <h2>Pridėti darbuotoją</h2>
+    <form method="post" action="/admin/darbuotojai" class="form">
+      <label>Vardas ir pavardė *<input name="full_name" required></label>
+      <label>Pareigos<input name="position"></label>
+      <label>El. paštas *<input type="email" name="email" required></label>
+      <label>Slaptažodis <span class="muted small">(tuščia — sugeneruos)</span>
+        <input name="password"></label>
+      <button class="btn btn-primary">Pridėti</button>
+    </form>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

@@ -1,0 +1,21 @@
+<%- include('partials/head') %>
+<%- include('partials/header') %>
+
+<div class="auth-wrap">
+  <div class="card auth-card">
+    <h1>Prisijungimas</h1>
+    <% if (error) { %><div class="flash flash-error"><%= error %></div><% } %>
+    <form method="post" action="/prisijungti" class="form">
+      <label>El. paštas
+        <input type="email" name="email" value="<%= email %>" required autofocus>
+      </label>
+      <label>Slaptažodis
+        <input type="password" name="password" required>
+      </label>
+      <button class="btn btn-primary btn-block">Prisijungti</button>
+    </form>
+    <p class="muted center">Neturite paskyros? <a href="/registruotis">Registruokitės</a></p>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

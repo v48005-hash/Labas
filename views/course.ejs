@@ -1,0 +1,36 @@
+<%- include('partials/head') %>
+<%- include('partials/header') %>
+
+<p class="back"><a href="/aplinka">← Į mano mokymus</a></p>
+
+<article class="card course-view">
+  <div class="course-view-head">
+    <span class="chip"><%= course.category %></span>
+    <% if (enrollment.status === 'passed') { %>
+      <span class="chip chip-green">Išlaikyta<% if (enrollment.best_score != null) { %> · <%= enrollment.best_score %>%<% } %></span>
+    <% } %>
+  </div>
+  <h1><%= course.title %></h1>
+  <% if (course.summary) { %><p class="lead"><%= course.summary %></p><% } %>
+
+  <div class="instruction">
+    <%- renderText(course.content) %>
+  </div>
+
+  <div class="course-view-foot">
+    <div class="muted small">
+      Išlaikymo riba <strong><%= course.pass_score %>%</strong> ·
+      Pažymėjimas galioja <strong><%= course.valid_months %> mėn.</strong> ·
+      Klausimų teste: <strong><%= questionCount %></strong>
+    </div>
+    <% if (questionCount > 0) { %>
+      <form method="post" action="/kursas/<%= course.id %>/perskaityta">
+        <button class="btn btn-primary btn-lg">Susipažinau — pradėti testą →</button>
+      </form>
+    <% } else { %>
+      <span class="muted">Testas dar neparuoštas.</span>
+    <% } %>
+  </div>
+</article>
+
+<%- include('partials/footer') %>

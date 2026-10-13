@@ -1,0 +1,31 @@
+<%- include('../partials/head') %>
+<%- include('../partials/header') %>
+
+<div class="page-head">
+  <div><h1>Kursai</h1><p class="muted">Saugos instrukcijos ir žinių testai.</p></div>
+  <a href="/admin/kursai/naujas" class="btn btn-primary">+ Naujas kursas</a>
+</div>
+
+<% if (courses.length === 0) { %>
+  <div class="empty">Kursų dar nėra. <a href="/admin/kursai/naujas">Sukurkite pirmąjį kursą</a>
+    arba <a href="#" onclick="event.preventDefault();document.getElementById('seedForm').submit();">įkelkite pavyzdinius</a>.</div>
+<% } else { %>
+  <table class="table">
+    <thead><tr><th>Pavadinimas</th><th>Kategorija</th><th>Klausimų</th><th>Priskirta</th><th>Būsena</th><th></th></tr></thead>
+    <tbody>
+      <% courses.forEach(function(c){ %>
+        <tr>
+          <td><a href="/admin/kursai/<%= c.id %>"><strong><%= c.title %></strong></a></td>
+          <td><span class="chip"><%= c.category %></span></td>
+          <td><%= c.q_count %></td>
+          <td><%= c.enrolled %></td>
+          <td><% if (c.is_published) { %><span class="chip chip-green">Publikuota</span>
+              <% } else { %><span class="chip chip-gray">Juodraštis</span><% } %></td>
+          <td><a href="/admin/kursai/<%= c.id %>" class="btn btn-ghost btn-sm">Redaguoti</a></td>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+<% } %>
+
+<%- include('../partials/footer') %>

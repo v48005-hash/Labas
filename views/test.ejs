@@ -1,0 +1,29 @@
+<%- include('partials/head') %>
+<%- include('partials/header') %>
+
+<p class="back"><a href="/kursas/<%= course.id %>">← Į instrukciją</a></p>
+
+<div class="card test-card">
+  <h1>Žinių testas</h1>
+  <p class="muted"><%= course.title %> · Išlaikymo riba <strong><%= course.pass_score %>%</strong></p>
+
+  <form method="post" action="/kursas/<%= course.id %>/testas" class="quiz" id="quiz">
+    <% questions.forEach(function(q, i){ %>
+      <fieldset class="question">
+        <legend><span class="qnum"><%= i + 1 %></span> <%= q.text %></legend>
+        <% q.options.forEach(function(opt, idx){ %>
+          <label class="option">
+            <input type="radio" name="q_<%= q.id %>" value="<%= idx %>" required>
+            <span><%= opt %></span>
+          </label>
+        <% }) %>
+      </fieldset>
+    <% }) %>
+    <div class="quiz-foot">
+      <span class="muted small">Atsakykite į visus <%= questions.length %> klausimus.</span>
+      <button class="btn btn-primary btn-lg">Pateikti atsakymus</button>
+    </div>
+  </form>
+</div>
+
+<%- include('partials/footer') %>
