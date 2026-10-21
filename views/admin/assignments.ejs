@@ -1,0 +1,59 @@
+<%- include('../partials/head') %>
+<%- include('../partials/header') %>
+
+<div class="page-head"><div><h1>Priskyrimai</h1>
+  <p class="muted">Priskirkite kursus darbuotojams. Žalia = išlaikyta, mėlyna = priskirta.</p></div></div>
+
+<% if (employees.length === 0 || courses.length === 0) { %>
+  <div class="empty">
+    Reikia bent vieno darbuotojo ir vieno publikuoto kurso.
+    <a href="/admin/darbuotojai">Pridėti darbuotoją</a> ·
+    <a href="/admin/kursai/naujas">Sukurti kursą</a>
+  </div>
+<% } else { %>
+
+  <div class="card">
+    <h2>Priskirti visiems</h2>
+    <form method="post" action="/admin/priskyrimai/visiems" class="inline-form">
+      <select name="course_id" required>
+        <% courses.forEach(function(c){ %><option value="<%= c.id %>"><%= c.title %></option><% }) %>
+      </select>
+      <button class="btn btn-primary">Priskirti visiems darbuotojams</button>
+    </form>
+  </div>
+
+  <div class="card scroll-x">
+    <table class="table matrix">
+      <thead>
+        <tr><th>Darbuotojas</th>
+          <% courses.forEach(function(c){ %><th class="rot"><span><%= c.title %></span></th><% }) %>
+        </tr>
+      </thead>
+      <tbody>
+        <% employees.forEach(function(e){ %>
+          <tr>
+            <td><strong><%= e.full_name %></strong><% if (e.position) { %><br><span class="muted small"><%= e.position %></span><% } %></td>
+            <% courses.forEach(function(c){
+                 var m = map[e.id + ':' + c.id]; %>
+              <td class="cell">
+                <% if (m && m.status === 'passed') { %>
+                  <span class="dot dot-green" title="Išlaikyta <%= m.best_score %>%">✓</span>
+                <% } else if (m) { %>
+                  <span class="dot dot-blue" title="Priskirta (<%= m.status %>)">•</span>
+                <% } else { %>
+                  <form method="post" action="/admin/priskyrimai" class="inline">
+                    <input type="hidden" name="user_id" value="<%= e.id %>">
+                    <input type="hidden" name="course_id" value="<%= c.id %>">
+                    <button class="dot dot-add" title="Priskirti">+</button>
+                  </form>
+                <% } %>
+              </td>
+            <% }) %>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
+
+<%- include('../partials/footer') %>

@@ -1,0 +1,45 @@
+<%- include('partials/head') %>
+<%- include('partials/header') %>
+
+<div class="page-head">
+  <div>
+    <h1>Mano mokymai</h1>
+    <p class="muted">Priskirti saugos kursai, instrukcijos ir testai.</p>
+  </div>
+  <div class="stat-row">
+    <div class="stat"><span class="stat-num"><%= stats.total %></span><span class="stat-label">Iš viso</span></div>
+    <div class="stat"><span class="stat-num ok"><%= stats.passed %></span><span class="stat-label">Išlaikyta</span></div>
+    <div class="stat"><span class="stat-num warn"><%= stats.pending %></span><span class="stat-label">Laukia</span></div>
+  </div>
+</div>
+
+<% if (rows.length === 0) { %>
+  <div class="empty">Kol kas jums nepriskirtas nė vienas kursas. Kreipkitės į įmonės administratorių.</div>
+<% } else { %>
+  <div class="course-grid">
+    <% rows.forEach(function(r){ %>
+      <a class="card course-card status-<%= r.status || 'assigned' %>" href="/kursas/<%= r.id %>">
+        <div class="course-card-top">
+          <span class="chip"><%= r.category %></span>
+          <% if (r.status === 'passed') { %>
+            <span class="chip chip-green">Išlaikyta<% if (r.best_score != null) { %> · <%= r.best_score %>%<% } %></span>
+          <% } else if (r.status === 'failed') { %>
+            <span class="chip chip-red">Neišlaikyta</span>
+          <% } else if (r.status === 'in_progress') { %>
+            <span class="chip chip-blue">Pradėta</span>
+          <% } else { %>
+            <span class="chip chip-gray">Priskirta</span>
+          <% } %>
+        </div>
+        <h3><%= r.title %></h3>
+        <p class="muted small"><%= r.summary || 'Saugos instrukcija ir žinių testas.' %></p>
+        <div class="course-card-foot">
+          <span class="muted small">Išlaikymo riba <%= r.pass_score %>%</span>
+          <span class="go">Atidaryti →</span>
+        </div>
+      </a>
+    <% }) %>
+  </div>
+<% } %>
+
+<%- include('partials/footer') %>

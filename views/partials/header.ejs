@@ -1,0 +1,35 @@
+<header class="site-header">
+  <div class="container header-inner">
+    <a href="/" class="brand">
+      <span class="brand-mark">🛡️</span>
+      <span class="brand-name">Saugos pilotas</span>
+    </a>
+    <nav class="main-nav">
+      <% if (currentUser) { %>
+        <% if (currentUser.role === 'admin') { %>
+          <a href="/admin" class="<%= path.startsWith('/admin') ? 'active' : '' %>">Administravimas</a>
+          <a href="/admin/kursai">Kursai</a>
+          <a href="/admin/darbuotojai">Darbuotojai</a>
+          <a href="/admin/priskyrimai">Priskyrimai</a>
+        <% } else { %>
+          <a href="/aplinka" class="<%= path === '/aplinka' ? 'active' : '' %>">Mano mokymai</a>
+          <a href="/pazymejimai" class="<%= path === '/pazymejimai' ? 'active' : '' %>">Pažymėjimai</a>
+        <% } %>
+        <span class="nav-user" title="<%= currentUser.email %>">
+          <%= currentUser.full_name %><% if (currentCompany) { %> · <%= currentCompany.name %><% } %>
+        </span>
+        <form method="post" action="/atsijungti" class="inline">
+          <button class="btn btn-ghost btn-sm">Atsijungti</button>
+        </form>
+      <% } else { %>
+        <a href="/tikrinti">Tikrinti pažymėjimą</a>
+        <a href="/prisijungti">Prisijungti</a>
+        <a href="/registruotis" class="btn btn-primary btn-sm">Registruotis</a>
+      <% } %>
+    </nav>
+  </div>
+</header>
+<% if (typeof flash !== 'undefined' && flash) { %>
+  <div class="container"><div class="flash flash-<%= flash.type %>"><%= flash.text %></div></div>
+<% } %>
+<main class="container page">

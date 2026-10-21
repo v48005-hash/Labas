@@ -1,0 +1,39 @@
+<%- include('partials/head') %>
+<%- include('partials/header') %>
+
+<div class="auth-wrap">
+  <div class="card auth-card">
+    <h1>Pažymėjimo tikrinimas</h1>
+    <p class="muted">Įveskite pažymėjimo kodą (pvz. SP-1A2B3C4D), kad patikrintumėte jo galiojimą.</p>
+    <form method="get" action="/tikrinti" class="form">
+      <label>Pažymėjimo kodas
+        <input name="kodas" value="<%= code %>" placeholder="SP-XXXXXXXX" autofocus>
+      </label>
+      <button class="btn btn-primary btn-block">Tikrinti</button>
+    </form>
+
+    <% if (code) { %>
+      <% if (result) {
+           var expired = result.expires_at && new Date(result.expires_at) < new Date(); %>
+        <div class="verify-result <%= expired ? 'bad' : 'good' %>">
+          <div class="verify-head"><%= expired ? '⚠️ Nebegalioja' : '✅ Galiojantis pažymėjimas' %></div>
+          <table class="kv">
+            <tr><th>Kursas</th><td><%= result.title %></td></tr>
+            <tr><th>Asmuo</th><td><%= result.full_name %></td></tr>
+            <% if (result.company) { %><tr><th>Įmonė</th><td><%= result.company %></td></tr><% } %>
+            <tr><th>Kodas</th><td><%= result.code %></td></tr>
+            <tr><th>Išduota</th><td><%= formatDate(result.issued_at) %></td></tr>
+            <tr><th>Galioja iki</th><td><%= formatDate(result.expires_at) %></td></tr>
+          </table>
+        </div>
+      <% } else { %>
+        <div class="verify-result bad">
+          <div class="verify-head">❌ Pažymėjimas nerastas</div>
+          <p class="muted">Tokio kodo sistemoje nėra. Patikrinkite, ar teisingai įvedėte.</p>
+        </div>
+      <% } %>
+    <% } %>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

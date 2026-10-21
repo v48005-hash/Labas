@@ -1,0 +1,84 @@
+<%- include('../partials/head') %>
+<%- include('../partials/header') %>
+
+<p class="back"><a href="/admin/kursai">← Į kursų sąrašą</a></p>
+<h1><%= course ? 'Redaguoti kursą' : 'Naujas kursas' %></h1>
+
+<div class="form-cols">
+  <form method="post" action="/admin/kursai" class="card form">
+    <% if (course) { %><input type="hidden" name="id" value="<%= course.id %>"><% } %>
+    <label>Pavadinimas *
+      <input name="title" value="<%= course ? course.title : '' %>" required>
+    </label>
+    <div class="grid-2">
+      <label>Kategorija
+        <input name="category" value="<%= course ? course.category : 'Bendra' %>">
+      </label>
+      <label>Trumpas aprašymas
+        <input name="summary" value="<%= course ? (course.summary || '') : '' %>">
+      </label>
+    </div>
+    <label>Instrukcijos tekstas *
+      <textarea name="content" rows="14" required placeholder="## Antraštė&#10;&#10;Tekstas...&#10;&#10;- punktas&#10;- punktas"><%= course ? course.content : '' %></textarea>
+      <span class="muted small">Palaikoma: ## antraštės, - sąrašai, **paryškinimas**, pastraipos.</span>
+    </label>
+    <div class="grid-3">
+      <label>Išlaikymo riba (%)
+        <input type="number" name="pass_score" min="0" max="100" value="<%= course ? course.pass_score : 80 %>">
+      </label>
+      <label>Galioja (mėn.)
+        <input type="number" name="valid_months" min="1" value="<%= course ? course.valid_months : 12 %>">
+      </label>
+      <label class="check">
+        <input type="checkbox" name="is_published" <%= !course || course.is_published ? 'checked' : '' %>>
+        Publikuota
+      </label>
+    </div>
+    <button class="btn btn-primary">Išsaugoti kursą</button>
+  </form>
+
+  <div class="card">
+    <h2>Testo klausimai</h2>
+    <% if (!course) { %>
+      <p class="muted">Pirma išsaugokite kursą, tada galėsite pridėti klausimų.</p>
+    <% } else { %>
+      <% if (questions.length === 0) { %>
+        <p class="muted">Klausimų dar nėra.</p>
+      <% } else { %>
+        <ol class="qlist">
+          <% questions.forEach(function(q){ %>
+            <li>
+              <div class="qlist-text"><%= q.text %></div>
+              <ul class="qlist-opts">
+                <% q.options.forEach(function(opt, idx){ %>
+                  <li class="<%= idx === q.correct_index ? 'correct' : '' %>"><%= opt %></li>
+                <% }) %>
+              </ul>
+              <form method="post" action="/admin/klausimas/<%= q.id %>/trinti" class="inline">
+                <button class="btn btn-ghost btn-sm danger">Trinti</button>
+              </form>
+            </li>
+          <% }) %>
+        </ol>
+      <% } %>
+
+      <hr class="soft">
+      <h3>Pridėti klausimą</h3>
+      <form method="post" action="/admin/kursai/<%= course.id %>/klausimas" class="form">
+        <label>Klausimas
+          <input name="text" required>
+        </label>
+        <% for (var i = 0; i < 4; i++) { %>
+          <label class="opt-row">
+            <input type="radio" name="correct_index" value="<%= i %>" <%= i === 0 ? 'checked' : '' %> title="Teisingas">
+            <input name="opt<%= i %>" placeholder="Atsakymas <%= i + 1 %><%= i < 2 ? ' (privaloma)' : ' (nebūtina)' %>">
+          </label>
+        <% } %>
+        <span class="muted small">Pažymėkite radijo mygtuką prie teisingo atsakymo. Mažiausiai 2 variantai.</span>
+        <button class="btn btn-outline">+ Pridėti klausimą</button>
+      </form>
+    <% } %>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

@@ -1,0 +1,47 @@
+<%- include('../partials/head') %>
+<%- include('../partials/header') %>
+
+<div class="page-head">
+  <div>
+    <h1>Administravimas</h1>
+    <p class="muted"><%= currentCompany ? currentCompany.name : '' %> · Prisijungimo kodas:
+      <code><%= currentCompany ? currentCompany.code : '' %></code></p>
+  </div>
+</div>
+
+<div class="stat-row big">
+  <div class="stat card"><span class="stat-num"><%= counts.employees %></span><span class="stat-label">Darbuotojų</span></div>
+  <div class="stat card"><span class="stat-num"><%= counts.courses %></span><span class="stat-label">Kursų</span></div>
+  <div class="stat card"><span class="stat-num ok"><%= counts.passed %></span><span class="stat-label">Išlaikymų</span></div>
+  <div class="stat card"><span class="stat-num warn"><%= counts.pending %></span><span class="stat-label">Laukia</span></div>
+</div>
+
+<div class="admin-actions">
+  <a href="/admin/kursai/naujas" class="btn btn-primary">+ Naujas kursas</a>
+  <a href="/admin/darbuotojai" class="btn btn-outline">+ Darbuotojas</a>
+  <a href="/admin/priskyrimai" class="btn btn-outline">Priskirti kursus</a>
+</div>
+
+<div class="card">
+  <h2>Paskutinė veikla</h2>
+  <% if (recent.length === 0) { %>
+    <p class="muted">Veiklos dar nėra. Sukurkite kursą ir priskirkite jį darbuotojams.</p>
+  <% } else { %>
+    <table class="table">
+      <thead><tr><th>Darbuotojas</th><th>Kursas</th><th>Būsena</th><th>Rez.</th><th>Data</th></tr></thead>
+      <tbody>
+        <% recent.forEach(function(r){ %>
+          <tr>
+            <td><%= r.full_name %></td>
+            <td><%= r.title %></td>
+            <td><%- include('../partials/status', { status: r.status }) %></td>
+            <td><%= r.best_score != null ? r.best_score + '%' : '—' %></td>
+            <td class="muted small"><%= formatDate(r.completed_at) %></td>
+          </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<%- include('../partials/footer') %>

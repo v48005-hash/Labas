@@ -1,0 +1,45 @@
+<%- include('partials/head') %>
+<%- include('partials/header') %>
+
+<div class="card result-card <%= result.passed ? 'pass' : 'fail' %>">
+  <div class="result-badge"><%= result.passed ? '🎉' : '📋' %></div>
+  <h1><%= result.passed ? 'Testas išlaikytas!' : 'Testas neišlaikytas' %></h1>
+  <p class="result-score">Jūsų rezultatas: <strong><%= result.score %>%</strong>
+    <span class="muted">(<%= result.correct %> iš <%= result.total %>)</span></p>
+  <p class="muted">Reikalinga riba: <%= course.pass_score %>%</p>
+
+  <% if (result.passed && cert) { %>
+    <div class="cert-note">
+      Išduotas pažymėjimas <strong><%= cert.code %></strong>, galioja iki <strong><%= formatDate(cert.expires_at) %></strong>.
+      <a href="/pazymejimai">Peržiūrėti pažymėjimus →</a>
+    </div>
+  <% } else if (!result.passed) { %>
+    <div class="result-actions">
+      <a href="/kursas/<%= course.id %>" class="btn btn-outline">Peržiūrėti instrukciją</a>
+      <a href="/kursas/<%= course.id %>/testas" class="btn btn-primary">Bandyti dar kartą</a>
+    </div>
+  <% } %>
+
+  <details class="review">
+    <summary>Peržiūrėti atsakymus</summary>
+    <% result.review.forEach(function(item, i){
+         var opts = JSON.parse(item.question.options_json); %>
+      <div class="review-item <%= item.isCorrect ? 'ok' : 'bad' %>">
+        <p class="review-q"><strong><%= i + 1 %>.</strong> <%= item.question.text %></p>
+        <ul>
+          <% opts.forEach(function(opt, idx){ %>
+            <li class="<%= idx === item.question.correct_index ? 'correct' : (idx === item.chosen ? 'chosen' : '') %>">
+              <%= opt %>
+              <% if (idx === item.question.correct_index) { %><span class="tag">teisingas</span><% } %>
+              <% if (idx === item.chosen && idx !== item.question.correct_index) { %><span class="tag tag-bad">jūsų</span><% } %>
+            </li>
+          <% }) %>
+        </ul>
+      </div>
+    <% }) %>
+  </details>
+
+  <p class="center"><a href="/aplinka">← Grįžti į mano mokymus</a></p>
+</div>
+
+<%- include('partials/footer') %>
