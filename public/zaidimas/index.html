@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="lt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>DSS patikra – statybvietės saugos žaidimas</title>
+<link rel="stylesheet" href="style.css">
+<script type="importmap">{ "imports": { "three": "./vendor/three.module.min.js" } }</script>
+</head>
+<body>
+<canvas id="view"></canvas>
+<div id="vignette"></div>
+
+<div id="hud" class="hidden">
+  <div class="hud-top">
+    <div class="hud-box" id="hudSite"></div>
+    <div class="hud-box hud-timer" id="hudTime">00:00</div>
+    <div class="hud-box hud-right">
+      <div>Pažeidimai <b id="hudFound">0/0</b></div>
+      <div>Taškai <b id="hudScore">0</b></div>
+      <div class="hud-weather" id="hudWeather"></div>
+    </div>
+  </div>
+  <div id="crosshair"></div>
+  <div id="prompt" class="hidden"></div>
+  <div id="toast" class="hidden"></div>
+  <div class="hud-keys" id="hudKeys">
+    <span><kbd>W A S D</kbd> judėti</span><span><kbd>Shift</kbd> bėgti</span><span><kbd>E</kbd> / pelė – tikrinti</span>
+    <span><kbd>Z</kbd> / deš. pelė – priartinti</span><span><kbd>F</kbd> žibintuvėlis</span><span><kbd>Tab</kbd> užrašai</span><span><kbd>Enter</kbd> baigti patikrą</span>
+  </div>
+  <div id="touch" class="hidden">
+    <div id="stick"><div id="knob"></div></div>
+    <button id="tInspect" class="tbtn tbig">Tikrinti</button>
+    <button id="tZoom" class="tbtn">🔍</button>
+    <button id="tLight" class="tbtn">🔦</button>
+    <button id="tNotes" class="tbtn">📋</button>
+    <button id="tEnd" class="tbtn">Baigti</button>
+  </div>
+</div>
+
+<div id="notes" class="panel side hidden"></div>
+
+<div id="menu" class="screen">
+  <div class="menu-inner">
+    <div class="logo"><span class="logo-badge">DSS</span> PATIKRA</div>
+    <p class="tagline">Jūs – darbuotojų saugos ir sveikatos specialistas. Apeikite statomą daugiabutį, raskite pažeidimus anksčiau, nei įvyks nelaimė.</p>
+    <div id="levels" class="levels"></div>
+    <p class="fine">Mokomasis žaidimas. Situacijos supaprastintos; tikroje statybvietėje vadovaukitės galiojančiais teisės aktais, įmonės profesinės rizikos vertinimu ir statybvietės saugos planu.
+      <a href="#" id="resetProgress">Ištrinti pažangą</a><a href="/" id="homeLink" class="hidden">← Saugos pilotas</a></p>
+  </div>
+</div>
+
+<div id="brief" class="screen hidden"><div class="panel" id="briefBox"></div></div>
+<div id="inspect" class="screen dim hidden"><div class="panel" id="inspectBox"></div></div>
+<div id="pause" class="screen dim hidden"><div class="panel small">
+  <h2>Pauzė</h2>
+  <button class="btn primary" id="btnResume">Tęsti patikrą</button>
+  <button class="btn" id="btnFinish">Baigti patikrą ir surašyti aktą</button>
+  <button class="btn" id="btnQuality"></button>
+  <button class="btn" id="btnSound"></button>
+  <button class="btn ghost" id="btnQuit">Grįžti į meniu</button>
+</div></div>
+<div id="report" class="screen dim hidden"><div class="panel wide" id="reportBox"></div></div>
+<div id="loading" class="screen hidden"><div class="loader">Ruošiama statybvietė…</div></div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

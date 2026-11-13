@@ -15,6 +15,7 @@
           <a href="/aplinka" class="<%= path === '/aplinka' ? 'active' : '' %>">Mano mokymai</a>
           <a href="/pazymejimai" class="<%= path === '/pazymejimai' ? 'active' : '' %>">Pažymėjimai</a>
         <% } %>
+        <a href="/zaidimas">🎮 DSS patikra</a>
         <span class="nav-user" title="<%= currentUser.email %>">
           <%= currentUser.full_name %><% if (currentCompany) { %> · <%= currentCompany.name %><% } %>
         </span>
@@ -22,6 +23,7 @@
           <button class="btn btn-ghost btn-sm">Atsijungti</button>
         </form>
       <% } else { %>
+        <a href="/zaidimas">🎮 DSS patikra</a>
         <a href="/tikrinti">Tikrinti pažymėjimą</a>
         <a href="/prisijungti">Prisijungti</a>
         <a href="/registruotis" class="btn btn-primary btn-sm">Registruotis</a>

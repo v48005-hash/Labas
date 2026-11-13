@@ -12,6 +12,9 @@ router.get('/', (req, res) => {
   res.render('landing', { title: 'Darbuotojų saugos e. mokymai' });
 });
 
+// 3D žaidimas „DSS patikra“ (statiniai failai – public/zaidimas)
+router.get('/zaidimas', (req, res) => res.redirect('/static/zaidimas/'));
+
 // Employee dashboard
 router.get('/aplinka', requireAuth, (req, res) => {
   if (req.user.role === 'admin') return res.redirect('/admin');
