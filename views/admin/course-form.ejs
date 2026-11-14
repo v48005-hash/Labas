@@ -5,7 +5,7 @@
 <h1><%= course ? 'Redaguoti kursą' : 'Naujas kursas' %></h1>
 
 <div class="form-cols">
-  <form method="post" action="/admin/kursai" class="card form">
+  <form method="post" action="/admin/kursai" class="card form"><%- csrfField %>
     <% if (course) { %><input type="hidden" name="id" value="<%= course.id %>"><% } %>
     <label>Pavadinimas *
       <input name="title" value="<%= course ? course.title : '' %>" required>
@@ -54,7 +54,7 @@
                   <li class="<%= idx === q.correct_index ? 'correct' : '' %>"><%= opt %></li>
                 <% }) %>
               </ul>
-              <form method="post" action="/admin/klausimas/<%= q.id %>/trinti" class="inline">
+              <form method="post" action="/admin/klausimas/<%= q.id %>/trinti" class="inline"><%- csrfField %>
                 <button class="btn btn-ghost btn-sm danger">Trinti</button>
               </form>
             </li>
@@ -64,7 +64,7 @@
 
       <hr class="soft">
       <h3>Pridėti klausimą</h3>
-      <form method="post" action="/admin/kursai/<%= course.id %>/klausimas" class="form">
+      <form method="post" action="/admin/kursai/<%= course.id %>/klausimas" class="form"><%- csrfField %>
         <label>Klausimas
           <input name="text" required>
         </label>

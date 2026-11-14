@@ -8,12 +8,14 @@
     <span class="muted">(<%= result.correct %> iš <%= result.total %>)</span></p>
   <p class="muted">Reikalinga riba: <%= course.pass_score %>%</p>
 
-  <% if (result.passed && cert) { %>
+  <% if (result.certificate) { %>
     <div class="cert-note">
-      Išduotas pažymėjimas <strong><%= cert.code %></strong>, galioja iki <strong><%= formatDate(cert.expires_at) %></strong>.
+      <% if (result.stillValid) { %>Jūsų pažymėjimas<% } else { %>Išduotas pažymėjimas<% } %>
+      <strong><%= result.certificate.code %></strong> galioja iki <strong><%= formatDate(result.certificate.expires_at) %></strong>.
       <a href="/pazymejimai">Peržiūrėti pažymėjimus →</a>
     </div>
-  <% } else if (!result.passed) { %>
+  <% } %>
+  <% if (!result.passed) { %>
     <div class="result-actions">
       <a href="/kursas/<%= course.id %>" class="btn btn-outline">Peržiūrėti instrukciją</a>
       <a href="/kursas/<%= course.id %>/testas" class="btn btn-primary">Bandyti dar kartą</a>
@@ -23,7 +25,7 @@
   <details class="review">
     <summary>Peržiūrėti atsakymus</summary>
     <% result.review.forEach(function(item, i){
-         var opts = JSON.parse(item.question.options_json); %>
+         var opts = item.options; %>
       <div class="review-item <%= item.isCorrect ? 'ok' : 'bad' %>">
         <p class="review-q"><strong><%= i + 1 %>.</strong> <%= item.question.text %></p>
         <ul>

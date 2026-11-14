@@ -45,7 +45,7 @@ hr.soft { border: none; border-top: 1px solid var(--line); margin: 1.25rem 0; }
 .main-nav { display: flex; align-items: center; gap: 1.1rem; flex-wrap: wrap; }
 .main-nav a { color: var(--muted); font-weight: 600; font-size: .95rem; }
 .main-nav a:hover, .main-nav a.active { color: var(--ink); text-decoration: none; }
-.nav-user { color: var(--muted); font-size: .9rem; }
+.main-nav a.nav-user { color: var(--muted); font-size: .9rem; font-weight: 500; }
 .inline { display: inline; }
 
 /* Buttons */
@@ -204,6 +204,8 @@ hr.soft { border: none; border-top: 1px solid var(--line); margin: 1.25rem 0; }
 .table th { text-align: left; font-size: .82rem; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; padding: .5rem .6rem; border-bottom: 2px solid var(--line); }
 .table td { padding: .6rem; border-bottom: 1px solid var(--line); }
 .scroll-x { overflow-x: auto; }
+.table-wrap { overflow-x: auto; }
+.stat-row { flex-wrap: wrap; }
 .admin-actions { display: flex; gap: .8rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
 
 /* Question list */
@@ -215,12 +217,15 @@ hr.soft { border: none; border-top: 1px solid var(--line); margin: 1.25rem 0; }
 .qlist-opts li.correct { background: var(--green-bg); color: var(--green); font-weight: 600; }
 
 /* Matrix */
-.matrix th.rot { height: 110px; white-space: nowrap; }
-.matrix th.rot span { display: inline-block; transform: rotate(-55deg); transform-origin: left; width: 1.4rem; font-size: .82rem; }
+.matrix th.col { text-align: center; text-transform: none; letter-spacing: 0; font-size: .85rem; min-width: 8rem; max-width: 12rem; vertical-align: bottom; }
+.matrix td:first-child, .matrix th:first-child { min-width: 11rem; }
 .matrix .cell { text-align: center; }
 .dot { display: inline-grid; place-items: center; width: 1.8rem; height: 1.8rem; border-radius: 50%; font-weight: 800; border: none; cursor: default; }
 .dot-green { background: var(--green-bg); color: var(--green); }
 .dot-blue { background: var(--blue-bg); color: var(--brand-dark); }
+.dot-red { background: var(--red-bg); color: var(--red); }
+button.dot-blue { cursor: pointer; font-family: inherit; }
+button.dot-blue:hover { background: var(--red-bg); color: var(--red); }
 .dot-add { background: #fff; border: 1px dashed var(--line); color: var(--muted); cursor: pointer; }
 .dot-add:hover { border-color: var(--brand); color: var(--brand); }
 

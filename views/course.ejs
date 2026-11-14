@@ -6,8 +6,10 @@
 <article class="card course-view">
   <div class="course-view-head">
     <span class="chip"><%= course.category %></span>
-    <% if (enrollment.status === 'passed') { %>
-      <span class="chip chip-green">Išlaikyta<% if (enrollment.best_score != null) { %> · <%= enrollment.best_score %>%<% } %></span>
+    <% if (status === 'passed') { %>
+      <span class="chip chip-green">Išlaikyta<% if (enrollment.best_score != null) { %> · <%= enrollment.best_score %>%<% } %> · galioja iki <%= formatDate(enrollment.expires_at) %></span>
+    <% } else if (status === 'expired') { %>
+      <span class="chip chip-red">Galiojimas baigėsi <%= formatDate(enrollment.expires_at) %> – perlaikykite testą</span>
     <% } %>
   </div>
   <h1><%= course.title %></h1>
@@ -24,7 +26,7 @@
       Klausimų teste: <strong><%= questionCount %></strong>
     </div>
     <% if (questionCount > 0) { %>
-      <form method="post" action="/kursas/<%= course.id %>/perskaityta">
+      <form method="post" action="/kursas/<%= course.id %>/perskaityta"><%- csrfField %>
         <button class="btn btn-primary btn-lg">Susipažinau — pradėti testą →</button>
       </form>
     <% } else { %>

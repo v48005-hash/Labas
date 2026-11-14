@@ -1,0 +1,31 @@
+<%- include('partials/head') %>
+<%- include('partials/header') %>
+
+<div class="auth-wrap">
+  <div class="card auth-card">
+    <h1>Mano profilis</h1>
+    <table class="kv">
+      <tr><th>Vardas</th><td><%= currentUser.full_name %></td></tr>
+      <tr><th>El. paštas</th><td><%= currentUser.email %></td></tr>
+      <% if (currentUser.position) { %><tr><th>Pareigos</th><td><%= currentUser.position %></td></tr><% } %>
+      <% if (currentCompany) { %><tr><th>Įmonė</th><td><%= currentCompany.name %></td></tr><% } %>
+    </table>
+    <hr class="soft">
+    <h2>Keisti slaptažodį</h2>
+    <% if (error) { %><div class="flash flash-error"><%= error %></div><% } %>
+    <form method="post" action="/profilis/slaptazodis" class="form"><%- csrfField %>
+      <label>Dabartinis slaptažodis
+        <input type="password" name="current" required autocomplete="current-password">
+      </label>
+      <label>Naujas slaptažodis
+        <input type="password" name="password" required minlength="8" autocomplete="new-password">
+      </label>
+      <label>Pakartokite naują slaptažodį
+        <input type="password" name="password2" required minlength="8" autocomplete="new-password">
+      </label>
+      <button class="btn btn-primary btn-block">Pakeisti slaptažodį</button>
+    </form>
+  </div>
+</div>
+
+<%- include('partials/footer') %>

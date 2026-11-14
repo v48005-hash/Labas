@@ -7,18 +7,18 @@
     <nav class="main-nav">
       <% if (currentUser) { %>
         <% if (currentUser.role === 'admin') { %>
-          <a href="/admin" class="<%= path.startsWith('/admin') ? 'active' : '' %>">Administravimas</a>
-          <a href="/admin/kursai">Kursai</a>
-          <a href="/admin/darbuotojai">Darbuotojai</a>
-          <a href="/admin/priskyrimai">Priskyrimai</a>
+          <a href="/admin" class="<%= path === '/admin' || path === '/admin/' ? 'active' : '' %>">Apžvalga</a>
+          <a href="/admin/kursai" class="<%= path.startsWith('/admin/kursai') ? 'active' : '' %>">Kursai</a>
+          <a href="/admin/darbuotojai" class="<%= path.startsWith('/admin/darbuotojai') ? 'active' : '' %>">Darbuotojai</a>
+          <a href="/admin/priskyrimai" class="<%= path.startsWith('/admin/priskyrimai') ? 'active' : '' %>">Priskyrimai</a>
         <% } else { %>
           <a href="/aplinka" class="<%= path === '/aplinka' ? 'active' : '' %>">Mano mokymai</a>
           <a href="/pazymejimai" class="<%= path === '/pazymejimai' ? 'active' : '' %>">Pažymėjimai</a>
         <% } %>
-        <span class="nav-user" title="<%= currentUser.email %>">
+        <a href="/profilis" class="nav-user<%= path === '/profilis' ? ' active' : '' %>" title="<%= currentUser.email %>">
           <%= currentUser.full_name %><% if (currentCompany) { %> · <%= currentCompany.name %><% } %>
-        </span>
-        <form method="post" action="/atsijungti" class="inline">
+        </a>
+        <form method="post" action="/atsijungti" class="inline"><%- csrfField %>
           <button class="btn btn-ghost btn-sm">Atsijungti</button>
         </form>
       <% } else { %>

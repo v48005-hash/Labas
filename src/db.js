@@ -77,6 +77,13 @@ function migrate() {
       expires_at    TEXT
     );
 
+    CREATE TABLE IF NOT EXISTS sessions (
+      sid     TEXT PRIMARY KEY,
+      sess    TEXT NOT NULL,
+      expires INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires);
+
     CREATE INDEX IF NOT EXISTS idx_users_company ON users(company_id);
     CREATE INDEX IF NOT EXISTS idx_courses_company ON courses(company_id);
     CREATE INDEX IF NOT EXISTS idx_enroll_user ON enrollments(user_id);

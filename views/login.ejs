@@ -5,7 +5,7 @@
   <div class="card auth-card">
     <h1>Prisijungimas</h1>
     <% if (error) { %><div class="flash flash-error"><%= error %></div><% } %>
-    <form method="post" action="/prisijungti" class="form">
+    <form method="post" action="/prisijungti" class="form"><%- csrfField %>
       <label>El. paštas
         <input type="email" name="email" value="<%= email %>" required autofocus>
       </label>

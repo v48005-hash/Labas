@@ -7,10 +7,9 @@
 </div>
 
 <% if (courses.length === 0) { %>
-  <div class="empty">Kursų dar nėra. <a href="/admin/kursai/naujas">Sukurkite pirmąjį kursą</a>
-    arba <a href="#" onclick="event.preventDefault();document.getElementById('seedForm').submit();">įkelkite pavyzdinius</a>.</div>
+  <div class="empty">Kursų dar nėra. <a href="/admin/kursai/naujas">Sukurkite pirmąjį kursą</a>.</div>
 <% } else { %>
-  <table class="table">
+  <div class="table-wrap"><table class="table">
     <thead><tr><th>Pavadinimas</th><th>Kategorija</th><th>Klausimų</th><th>Priskirta</th><th>Būsena</th><th></th></tr></thead>
     <tbody>
       <% courses.forEach(function(c){ %>
@@ -25,7 +24,7 @@
         </tr>
       <% }) %>
     </tbody>
-  </table>
+  </table></div>
 <% } %>
 
 <%- include('../partials/footer') %>

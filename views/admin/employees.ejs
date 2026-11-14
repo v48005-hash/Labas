@@ -13,7 +13,7 @@
   <div class="flash flash-success">
     Darbuotojas sukurtas. Prisijungimo duomenys:
     <strong><%= created.email %></strong> / <strong><%= created.password %></strong>
-    — perduokite juos darbuotojui (slaptažodį pataria pasikeisti).
+    — perduokite juos darbuotojui. Slaptažodis rodomas tik šį kartą; darbuotojas jį gali pasikeisti skiltyje „Profilis".
   </div>
 <% } %>
 
@@ -22,7 +22,7 @@
     <% if (employees.length === 0) { %>
       <p class="muted">Darbuotojų dar nėra.</p>
     <% } else { %>
-      <table class="table">
+      <div class="table-wrap"><table class="table">
         <thead><tr><th>Vardas</th><th>Pareigos</th><th>El. paštas</th><th>Progresas</th><th>Rolė</th></tr></thead>
         <tbody>
           <% employees.forEach(function(e){ %>
@@ -36,18 +36,18 @@
             </tr>
           <% }) %>
         </tbody>
-      </table>
+      </table></div>
     <% } %>
   </div>
 
   <div class="card">
     <h2>Pridėti darbuotoją</h2>
-    <form method="post" action="/admin/darbuotojai" class="form">
+    <form method="post" action="/admin/darbuotojai" class="form"><%- csrfField %>
       <label>Vardas ir pavardė *<input name="full_name" required></label>
       <label>Pareigos<input name="position"></label>
       <label>El. paštas *<input type="email" name="email" required></label>
       <label>Slaptažodis <span class="muted small">(tuščia — sugeneruos)</span>
-        <input name="password"></label>
+        <input name="password" minlength="8" autocomplete="off"></label>
       <button class="btn btn-primary">Pridėti</button>
     </form>
   </div>

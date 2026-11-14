@@ -1,47 +1,70 @@
 'use strict';
 
+const crypto = require('crypto');
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const db = require('../db');
-const { requireAdmin } = require('../middleware/auth');
-const { ensureEnrollment } = require('../domain');
+const { requireAdmin, flash } = require('../middleware/auth');
+const { ensureEnrollment, effectiveStatus } = require('../domain');
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// "Passed and still valid" — expired passes count as pending again.
+const VALID_PASS = "e.status = 'passed' AND (e.expires_at IS NULL OR e.expires_at > @now)";
 
 router.use(requireAdmin);
 
+function listEmployees(companyId) {
+  return db
+    .prepare(
+      `SELECT u.id, u.full_name, u.email, u.position, u.role,
+              (SELECT COUNT(*) FROM enrollments e WHERE e.user_id = u.id AND ${VALID_PASS}) AS passed,
+              (SELECT COUNT(*) FROM enrollments e WHERE e.user_id = u.id) AS assigned
+         FROM users u WHERE u.company_id = @cid ORDER BY u.full_name`
+    )
+    .all({ cid: companyId, now: new Date().toISOString() });
+}
+
+function ownCourse(req, id) {
+  return db
+    .prepare('SELECT * FROM courses WHERE id = ? AND company_id = ?')
+    .get(id, req.user.company_id);
+}
+
 // ---- Admin overview ----
 router.get('/', (req, res) => {
-  const cid = req.user.company_id;
+  const p = { cid: req.user.company_id, now: new Date().toISOString() };
   const counts = {
-    employees: db.prepare("SELECT COUNT(*) n FROM users WHERE company_id = ? AND role = 'employee'").get(cid).n,
-    courses: db.prepare('SELECT COUNT(*) n FROM courses WHERE company_id = ?').get(cid).n,
+    employees: db
+      .prepare("SELECT COUNT(*) n FROM users WHERE company_id = @cid AND role = 'employee'")
+      .get(p).n,
+    courses: db.prepare('SELECT COUNT(*) n FROM courses WHERE company_id = @cid').get(p).n,
     passed: db
       .prepare(
-        `SELECT COUNT(*) n FROM enrollments e
-           JOIN users u ON u.id = e.user_id
-          WHERE u.company_id = ? AND e.status = 'passed'`
+        `SELECT COUNT(*) n FROM enrollments e JOIN users u ON u.id = e.user_id
+          WHERE u.company_id = @cid AND ${VALID_PASS}`
       )
-      .get(cid).n,
+      .get(p).n,
     pending: db
       .prepare(
-        `SELECT COUNT(*) n FROM enrollments e
-           JOIN users u ON u.id = e.user_id
-          WHERE u.company_id = ? AND e.status != 'passed'`
+        `SELECT COUNT(*) n FROM enrollments e JOIN users u ON u.id = e.user_id
+          WHERE u.company_id = @cid AND NOT (${VALID_PASS})`
       )
-      .get(cid).n,
+      .get(p).n,
   };
 
   const recent = db
     .prepare(
-      `SELECT u.full_name, c.title, e.status, e.best_score, e.completed_at
+      `SELECT u.full_name, c.title, e.status, e.best_score, e.completed_at, e.expires_at
          FROM enrollments e
          JOIN users u ON u.id = e.user_id
          JOIN courses c ON c.id = e.course_id
-        WHERE u.company_id = ?
-        ORDER BY COALESCE(e.completed_at, e.assigned_at) DESC
+        WHERE u.company_id = @cid
+        ORDER BY COALESCE(e.completed_at, e.assigned_at) DESC, e.id DESC
         LIMIT 10`
     )
-    .all(cid);
+    .all(p)
+    .map((r) => ({ ...r, status: effectiveStatus(r) }));
 
   res.render('admin/overview', { title: 'Administravimas', counts, recent });
 });
@@ -64,9 +87,7 @@ router.get('/kursai/naujas', (req, res) => {
 });
 
 router.get('/kursai/:id', (req, res) => {
-  const course = db
-    .prepare('SELECT * FROM courses WHERE id = ? AND company_id = ?')
-    .get(req.params.id, req.user.company_id);
+  const course = ownCourse(req, req.params.id);
   if (!course) return res.redirect('/admin/kursai');
   const questions = db
     .prepare('SELECT * FROM questions WHERE course_id = ? ORDER BY sort_order, id')
@@ -78,48 +99,65 @@ router.get('/kursai/:id', (req, res) => {
 // ---- Create / update course ----
 router.post('/kursai', (req, res) => {
   const { id, title, category, summary, content, pass_score, valid_months, is_published } = req.body;
+  const clamp = (v, lo, hi, dflt) => {
+    const n = parseInt(v, 10);
+    return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : dflt;
+  };
   const data = {
-    title: (title || '').trim(),
-    category: (category || 'Bendra').trim() || 'Bendra',
-    summary: (summary || '').trim(),
-    content: content || '',
-    pass_score: Math.min(100, Math.max(0, parseInt(pass_score, 10) || 80)),
-    valid_months: Math.max(1, parseInt(valid_months, 10) || 12),
+    title: (title || '').trim().slice(0, 200),
+    category: (category || '').trim().slice(0, 60) || 'Bendra',
+    summary: (summary || '').trim().slice(0, 300),
+    content: (content || '').trim(),
+    pass_score: clamp(pass_score, 1, 100, 80),
+    valid_months: clamp(valid_months, 1, 120, 12),
     is_published: is_published ? 1 : 0,
   };
-  if (!data.title) return res.redirect('/admin/kursai/naujas');
+
+  if (!data.title || !data.content) {
+    flash(req, 'error', 'Kurso pavadinimas ir instrukcijos tekstas yra privalomi.');
+    return res.redirect(id ? '/admin/kursai/' + encodeURIComponent(id) : '/admin/kursai/naujas');
+  }
 
   if (id) {
+    const course = ownCourse(req, id);
+    if (!course) return res.redirect('/admin/kursai');
     db.prepare(
       `UPDATE courses SET title=@title, category=@category, summary=@summary, content=@content,
          pass_score=@pass_score, valid_months=@valid_months, is_published=@is_published
-       WHERE id=@id AND company_id=@cid`
-    ).run({ ...data, id: Number(id), cid: req.user.company_id });
-    return res.redirect('/admin/kursai/' + id);
+       WHERE id=@id`
+    ).run({ ...data, id: course.id });
+    flash(req, 'success', 'Kursas išsaugotas.');
+    return res.redirect('/admin/kursai/' + course.id);
   }
+
   const info = db
     .prepare(
       `INSERT INTO courses (company_id, title, category, summary, content, pass_score, valid_months, is_published)
        VALUES (@cid, @title, @category, @summary, @content, @pass_score, @valid_months, @is_published)`
     )
     .run({ ...data, cid: req.user.company_id });
+  flash(req, 'success', 'Kursas sukurtas. Dabar pridėkite testo klausimų.');
   res.redirect('/admin/kursai/' + info.lastInsertRowid);
 });
 
 // ---- Add a question ----
 router.post('/kursai/:id/klausimas', (req, res) => {
-  const course = db
-    .prepare('SELECT id FROM courses WHERE id = ? AND company_id = ?')
-    .get(req.params.id, req.user.company_id);
+  const course = ownCourse(req, req.params.id);
   if (!course) return res.redirect('/admin/kursai');
 
   const text = (req.body.text || '').trim();
-  const options = [req.body.opt0, req.body.opt1, req.body.opt2, req.body.opt3]
-    .map((o) => (o || '').trim())
-    .filter((o) => o.length > 0);
-  const correct = parseInt(req.body.correct_index, 10) || 0;
+  const raw = [0, 1, 2, 3].map((i) => (req.body['opt' + i] || '').trim());
+  const picked = parseInt(req.body.correct_index, 10);
+  const options = raw.filter((o) => o.length > 0);
+  // The chosen radio refers to the form row; map it to its position among the filled options.
+  const correct =
+    Number.isInteger(picked) && raw[picked] ? raw.slice(0, picked).filter(Boolean).length : -1;
 
-  if (text && options.length >= 2 && correct < options.length) {
+  if (!text || options.length < 2) {
+    flash(req, 'error', 'Įveskite klausimą ir bent du atsakymų variantus.');
+  } else if (correct < 0) {
+    flash(req, 'error', 'Teisingu pažymėtas atsakymas negali būti tuščias.');
+  } else {
     const maxOrder = db
       .prepare('SELECT COALESCE(MAX(sort_order),0) m FROM questions WHERE course_id = ?')
       .get(course.id).m;
@@ -138,55 +176,52 @@ router.post('/klausimas/:qid/trinti', (req, res) => {
         WHERE q.id = ? AND c.company_id = ?`
     )
     .get(req.params.qid, req.user.company_id);
-  if (q) {
-    db.prepare('DELETE FROM questions WHERE id = ?').run(q.id);
-    return res.redirect('/admin/kursai/' + q.course_id);
-  }
-  res.redirect('/admin/kursai');
+  if (!q) return res.redirect('/admin/kursai');
+  db.prepare('DELETE FROM questions WHERE id = ?').run(q.id);
+  res.redirect('/admin/kursai/' + q.course_id);
 });
 
 // ---- Employees ----
 router.get('/darbuotojai', (req, res) => {
-  const employees = db
-    .prepare(
-      `SELECT u.id, u.full_name, u.email, u.position, u.role,
-              (SELECT COUNT(*) FROM enrollments e WHERE e.user_id = u.id AND e.status='passed') AS passed,
-              (SELECT COUNT(*) FROM enrollments e WHERE e.user_id = u.id) AS assigned
-         FROM users u WHERE u.company_id = ? ORDER BY u.full_name`
-    )
-    .all(req.user.company_id);
-  res.render('admin/employees', { title: 'Darbuotojai', employees, error: null, created: null });
+  res.render('admin/employees', {
+    title: 'Darbuotojai',
+    employees: listEmployees(req.user.company_id),
+    error: null,
+    created: null,
+  });
 });
 
 router.post('/darbuotojai', (req, res) => {
-  const { full_name, email, position, password } = req.body;
-  const render = (extra) =>
-    res.render('admin/employees', {
+  const full_name = (req.body.full_name || '').trim();
+  const email = (req.body.email || '').trim().toLowerCase();
+  const position = (req.body.position || '').trim();
+  const password = (req.body.password || '').trim();
+
+  const render = (status, extra) =>
+    res.status(status).render('admin/employees', {
       title: 'Darbuotojai',
-      employees: db
-        .prepare(
-          `SELECT u.id, u.full_name, u.email, u.position, u.role,
-                  (SELECT COUNT(*) FROM enrollments e WHERE e.user_id = u.id AND e.status='passed') AS passed,
-                  (SELECT COUNT(*) FROM enrollments e WHERE e.user_id = u.id) AS assigned
-             FROM users u WHERE u.company_id = ? ORDER BY u.full_name`
-        )
-        .all(req.user.company_id),
+      employees: listEmployees(req.user.company_id),
       error: null,
       created: null,
       ...extra,
     });
 
-  if (!full_name || !email) return render({ error: 'Nurodykite vardą ir el. paštą.' });
-  const exists = db.prepare('SELECT id FROM users WHERE email = ?').get(email.toLowerCase());
-  if (exists) return render({ error: 'Toks el. paštas jau naudojamas.' });
+  if (!full_name || !EMAIL_RE.test(email)) {
+    return render(400, { error: 'Nurodykite vardą ir teisingą el. paštą.' });
+  }
+  if (password && password.length < 8) {
+    return render(400, { error: 'Slaptažodis turi būti bent 8 simbolių (arba palikite tuščią).' });
+  }
+  if (db.prepare('SELECT id FROM users WHERE email = ?').get(email)) {
+    return render(400, { error: 'Toks el. paštas jau naudojamas.' });
+  }
 
-  const pw = (password && password.trim()) || Math.random().toString(36).slice(2, 10);
-  const hash = bcrypt.hashSync(pw, 10);
+  const pw = password || crypto.randomBytes(9).toString('base64url');
   db.prepare(
     "INSERT INTO users (company_id, email, password_hash, full_name, position, role) VALUES (?,?,?,?,?,'employee')"
-  ).run(req.user.company_id, email.toLowerCase(), hash, full_name.trim(), (position || '').trim());
+  ).run(req.user.company_id, email, bcrypt.hashSync(pw, 10), full_name, position);
 
-  return render({ created: { email: email.toLowerCase(), password: pw } });
+  render(200, { created: { email, password: pw } });
 });
 
 // ---- Assignments ----
@@ -200,39 +235,63 @@ router.get('/priskyrimai', (req, res) => {
     .all(cid);
   const matrix = db
     .prepare(
-      `SELECT e.user_id, e.course_id, e.status, e.best_score
+      `SELECT e.user_id, e.course_id, e.status, e.best_score, e.expires_at
          FROM enrollments e JOIN users u ON u.id = e.user_id
         WHERE u.company_id = ?`
     )
     .all(cid);
   const map = {};
-  for (const m of matrix) map[m.user_id + ':' + m.course_id] = m;
+  for (const m of matrix) map[m.user_id + ':' + m.course_id] = { ...m, status: effectiveStatus(m) };
   res.render('admin/assignments', { title: 'Priskyrimai', employees, courses, map });
 });
 
-router.post('/priskyrimai', (req, res) => {
+// Both ids must belong to the admin's company; returns null otherwise.
+function ownPair(req) {
   const cid = req.user.company_id;
-  const userId = Number(req.body.user_id);
-  const courseId = Number(req.body.course_id);
-  const user = db.prepare('SELECT id FROM users WHERE id = ? AND company_id = ?').get(userId, cid);
-  const course = db.prepare('SELECT id FROM courses WHERE id = ? AND company_id = ?').get(courseId, cid);
-  if (user && course) ensureEnrollment(userId, courseId);
+  const user = db
+    .prepare("SELECT id FROM users WHERE id = ? AND company_id = ? AND role = 'employee'")
+    .get(Number(req.body.user_id), cid);
+  const course = db
+    .prepare('SELECT id FROM courses WHERE id = ? AND company_id = ?')
+    .get(Number(req.body.course_id), cid);
+  return user && course ? { userId: user.id, courseId: course.id } : null;
+}
+
+router.post('/priskyrimai', (req, res) => {
+  const pair = ownPair(req);
+  if (pair) ensureEnrollment(pair.userId, pair.courseId);
+  res.redirect('/admin/priskyrimai');
+});
+
+// Withdraw an assignment that has not produced a certificate yet.
+router.post('/priskyrimai/salinti', (req, res) => {
+  const pair = ownPair(req);
+  if (pair) {
+    const info = db
+      .prepare(
+        `DELETE FROM enrollments
+          WHERE user_id = ? AND course_id = ?
+            AND NOT EXISTS (SELECT 1 FROM certificates c WHERE c.enrollment_id = enrollments.id)`
+      )
+      .run(pair.userId, pair.courseId);
+    if (info.changes === 0) {
+      flash(req, 'error', 'Priskyrimo pašalinti negalima – darbuotojui jau išduotas pažymėjimas.');
+    }
+  }
   res.redirect('/admin/priskyrimai');
 });
 
 // Assign a course to all employees at once
 router.post('/priskyrimai/visiems', (req, res) => {
-  const cid = req.user.company_id;
-  const courseId = Number(req.body.course_id);
-  const course = db.prepare('SELECT id FROM courses WHERE id = ? AND company_id = ?').get(courseId, cid);
+  const course = ownCourse(req, Number(req.body.course_id));
   if (course) {
     const employees = db
       .prepare("SELECT id FROM users WHERE company_id = ? AND role='employee'")
-      .all(cid);
-    const tx = db.transaction((list) => {
-      for (const emp of list) ensureEnrollment(emp.id, courseId);
-    });
-    tx(employees);
+      .all(req.user.company_id);
+    db.transaction((list) => {
+      for (const emp of list) ensureEnrollment(emp.id, course.id);
+    })(employees);
+    flash(req, 'success', `Kursas „${course.title}“ priskirtas visiems darbuotojams (${employees.length}).`);
   }
   res.redirect('/admin/priskyrimai');
 });

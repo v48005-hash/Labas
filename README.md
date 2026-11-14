@@ -12,12 +12,14 @@ Tai savarankiškas, originalus produktas (ne susijęs su jokia kita paslauga).
 - Asmeninė aplinka su priskirtais kursais ir jų būsena
 - Saugos instrukcijų skaitymas ir patvirtinimas „susipažinau"
 - Automatiškai vertinami žinių testai su pakartojimais
-- Pažymėjimai su unikaliu kodu ir galiojimo terminu
+- Pažymėjimai su unikaliu kodu ir galiojimo terminu; pasibaigus galiojimui kursas perlaikomas
+- Slaptažodžio keitimas skiltyje „Profilis"
 
 **Administratoriui (įmonei)**
 - Kursų kūrimas ir redagavimas (instrukcijos tekstas + testo klausimai)
 - Darbuotojų valdymas (pridėjimas, prisijungimo kodas savarankiškai registracijai)
-- Kursų priskyrimas pavieniui arba visiems vienu mygtuku
+- Kursų priskyrimas pavieniui arba visiems vienu mygtuku, priskyrimo atšaukimas
+- Darbuotojas mato tik jam priskirtus kursus
 - Stebėsenos skydelis: išlaikymai, laukiantys, paskutinė veikla
 
 **Vieša**
@@ -37,6 +39,7 @@ Tai savarankiškas, originalus produktas (ne susijęs su jokia kita paslauga).
 npm install          # priklausomybės
 npm run seed         # (nebūtina) įkelti pavyzdinius duomenis
 npm start            # paleisti http://localhost:3000
+npm test             # automatiniai testai (atskira laikina duomenų bazė)
 ```
 
 Kūrimo režimas su automatiniu perkrovimu: `npm run dev`.
@@ -47,7 +50,7 @@ Perkurti pavyzdinius duomenis nuo nulio: `npm run reset`.
 | Rolė           | El. paštas            | Slaptažodis |
 |----------------|-----------------------|-------------|
 | Administratorius | `admin@pavyzdys.lt` | `admin123`  |
-| Darbuotojas      | `jonas@pavyzdys.lt` | `demo123`   |
+| Darbuotojas      | `jonas@pavyzdys.lt` | `demo1234` |
 
 Įmonės prisijungimo kodas (savarankiškai registracijai): `pavyzdys-demo`
 
@@ -57,6 +60,7 @@ Perkurti pavyzdinius duomenis nuo nulio: `npm run reset`.
 src/
   server.js          # Express aplikacija ir maršrutų prijungimas
   db.js              # SQLite schema ir migracija
+  security.js        # sesijų saugykla (SQLite), CSRF, saugos antraštės, užklausų ribojimas
   domain.js          # dalyko logika (priskyrimai, testų vertinimas, pažymėjimai)
   util.js            # instrukcijų teksto atvaizdavimas, datų formatas
   middleware/auth.js # sesijos, prieigos apsauga
@@ -64,6 +68,7 @@ src/
 views/               # EJS šablonai (+ partials, admin)
 public/css/          # stiliai
 scripts/seed.js      # pavyzdiniai duomenys
+test/app.test.js     # testai per visą aplikaciją
 ```
 
 ## Aplinkos kintamieji
@@ -71,7 +76,18 @@ scripts/seed.js      # pavyzdiniai duomenys
 | Kintamasis       | Numatyta                        | Paskirtis                    |
 |------------------|---------------------------------|------------------------------|
 | `PORT`           | `3000`                          | Serverio prievadas           |
-| `SESSION_SECRET` | dev reikšmė                     | Sesijos pasirašymo raktas    |
+| `SESSION_SECRET` | dev reikšmė                     | Sesijos pasirašymo raktas (produkcijoje privalomas) |
+| `NODE_ENV`       | –                               | `production` įjungia saugius slapukus ir proxy palaikymą |
 | `SP_DB_PATH`     | `data/saugos-pilotas.db`        | SQLite failo kelias          |
 
-> Produkcijoje būtinai nustatykite stiprų `SESSION_SECRET` ir naudokite HTTPS.
+## Sauga
+
+- Slaptažodžiai saugomi `bcrypt` maiša, mažiausiai 8 simboliai
+- Kiekviena forma apsaugota CSRF žetonu; prisijungus sesija sukuriama iš naujo
+- Sesijos saugomos SQLite lentelėje (išlieka po serverio perkrovimo)
+- Prisijungimo, registracijos ir pažymėjimų tikrinimo bandymai ribojami pagal IP
+- Saugos antraštės (CSP, `X-Frame-Options`, `nosniff`); puslapiuose nėra jokio JavaScript
+- Įmonių duomenys atskirti: administratorius pasiekia tik savo įmonės kursus ir darbuotojus
+
+> Produkcijoje nustatykite `NODE_ENV=production`, stiprų `SESSION_SECRET` ir naudokite HTTPS —
+> be `SESSION_SECRET` serveris produkcijos režimu nepasileis.

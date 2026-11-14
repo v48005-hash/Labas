@@ -2,7 +2,7 @@
 <%- include('../partials/header') %>
 
 <div class="page-head"><div><h1>Priskyrimai</h1>
-  <p class="muted">Priskirkite kursus darbuotojams. Žalia = išlaikyta, mėlyna = priskirta.</p></div></div>
+  <p class="muted">„+" priskiria kursą, mėlynas taškas – priskirta (spustelėjus priskyrimas atšaukiamas), žalia – išlaikyta, raudona – baigėsi galiojimas.</p></div></div>
 
 <% if (employees.length === 0 || courses.length === 0) { %>
   <div class="empty">
@@ -14,7 +14,7 @@
 
   <div class="card">
     <h2>Priskirti visiems</h2>
-    <form method="post" action="/admin/priskyrimai/visiems" class="inline-form">
+    <form method="post" action="/admin/priskyrimai/visiems" class="inline-form"><%- csrfField %>
       <select name="course_id" required>
         <% courses.forEach(function(c){ %><option value="<%= c.id %>"><%= c.title %></option><% }) %>
       </select>
@@ -26,7 +26,7 @@
     <table class="table matrix">
       <thead>
         <tr><th>Darbuotojas</th>
-          <% courses.forEach(function(c){ %><th class="rot"><span><%= c.title %></span></th><% }) %>
+          <% courses.forEach(function(c){ %><th class="col"><%= c.title %></th><% }) %>
         </tr>
       </thead>
       <tbody>
@@ -38,10 +38,16 @@
               <td class="cell">
                 <% if (m && m.status === 'passed') { %>
                   <span class="dot dot-green" title="Išlaikyta <%= m.best_score %>%">✓</span>
+                <% } else if (m && m.status === 'expired') { %>
+                  <span class="dot dot-red" title="Baigėsi galiojimas <%= formatDate(m.expires_at) %>">!</span>
                 <% } else if (m) { %>
-                  <span class="dot dot-blue" title="Priskirta (<%= m.status %>)">•</span>
+                  <form method="post" action="/admin/priskyrimai/salinti" class="inline"><%- csrfField %>
+                    <input type="hidden" name="user_id" value="<%= e.id %>">
+                    <input type="hidden" name="course_id" value="<%= c.id %>">
+                    <button class="dot dot-blue" title="<%= m.status === 'failed' ? 'Neišlaikyta' : 'Priskirta' %> – spustelėkite, kad atšauktumėte">•</button>
+                  </form>
                 <% } else { %>
-                  <form method="post" action="/admin/priskyrimai" class="inline">
+                  <form method="post" action="/admin/priskyrimai" class="inline"><%- csrfField %>
                     <input type="hidden" name="user_id" value="<%= e.id %>">
                     <input type="hidden" name="course_id" value="<%= c.id %>">
                     <button class="dot dot-add" title="Priskirti">+</button>

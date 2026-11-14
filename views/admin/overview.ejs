@@ -27,7 +27,7 @@
   <% if (recent.length === 0) { %>
     <p class="muted">Veiklos dar nėra. Sukurkite kursą ir priskirkite jį darbuotojams.</p>
   <% } else { %>
-    <table class="table">
+    <div class="table-wrap"><table class="table">
       <thead><tr><th>Darbuotojas</th><th>Kursas</th><th>Būsena</th><th>Rez.</th><th>Data</th></tr></thead>
       <tbody>
         <% recent.forEach(function(r){ %>
@@ -40,7 +40,7 @@
           </tr>
         <% }) %>
       </tbody>
-    </table>
+    </table></div>
   <% } %>
 </div>
 

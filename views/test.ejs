@@ -7,7 +7,7 @@
   <h1>Žinių testas</h1>
   <p class="muted"><%= course.title %> · Išlaikymo riba <strong><%= course.pass_score %>%</strong></p>
 
-  <form method="post" action="/kursas/<%= course.id %>/testas" class="quiz" id="quiz">
+  <form method="post" action="/kursas/<%= course.id %>/testas" class="quiz" id="quiz"><%- csrfField %>
     <% questions.forEach(function(q, i){ %>
       <fieldset class="question">
         <legend><span class="qnum"><%= i + 1 %></span> <%= q.text %></legend>

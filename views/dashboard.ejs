@@ -23,6 +23,8 @@
           <span class="chip"><%= r.category %></span>
           <% if (r.status === 'passed') { %>
             <span class="chip chip-green">Išlaikyta<% if (r.best_score != null) { %> · <%= r.best_score %>%<% } %></span>
+          <% } else if (r.status === 'expired') { %>
+            <span class="chip chip-red">Baigėsi galiojimas</span>
           <% } else if (r.status === 'failed') { %>
             <span class="chip chip-red">Neišlaikyta</span>
           <% } else if (r.status === 'in_progress') { %>
@@ -34,7 +36,7 @@
         <h3><%= r.title %></h3>
         <p class="muted small"><%= r.summary || 'Saugos instrukcija ir žinių testas.' %></p>
         <div class="course-card-foot">
-          <span class="muted small">Išlaikymo riba <%= r.pass_score %>%</span>
+          <span class="muted small"><% if (r.status === 'passed' && r.expires_at) { %>Galioja iki <%= formatDate(r.expires_at) %><% } else { %>Išlaikymo riba <%= r.pass_score %>%<% } %></span>
           <span class="go">Atidaryti →</span>
         </div>
       </a>
