@@ -40,6 +40,8 @@ Reikia apeiti objektą, apžiūrėti įtartinas vietas ir kiekvienai parinkti te
 
 - Adresas: `/zaidimas` (arba tiesiog atidarykite `public/zaidimas/` per bet kurį statinį serverį,
   pvz. `npx serve public/zaidimas` – žaidimui serverio logikos nereikia).
+- Vienas failas dalijimuisi: `dss-patikra.html` (žaidimas, three.js ir stiliai viename faile) – nusiųskite kolegoms,
+  jie atsidaro dukart spustelėję, be serverio ir interneto. Perkurti: `npm i -D esbuild && node scripts/build-zaidimas.js`.
 - Valdymas: `W A S D` – judėti, pelė – dairytis, `E` – tikrinti, `Z` – priartinti, `F` – žibintuvėlis,
   `Tab` – užrašai, `Enter` – baigti patikrą. Telefone – jutiklinė svirtis ir mygtukai.
 - Grafika: three.js (įdėta į `public/zaidimas/vendor`), visos tekstūros procedūrinės, be išorinių failų.
