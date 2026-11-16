@@ -188,6 +188,8 @@ export function makeMaterials() {
   M.grey = flat(0x7c8087, { roughness: 0.7 });
   M.skin = flat(0xd9a583, { roughness: 0.75 });
   M.hair = flat(0x3a2a1e, { roughness: 0.9 });
+  M.skin2 = flat(0xc68e6c, { roughness: 0.75 }); M.skin3 = flat(0xe6b99a, { roughness: 0.75 });
+  M.boot = flat(0x4a3a2c, { roughness: 0.85 }); M.glove = flat(0xb9b2a4, { roughness: 0.9 }); M.lip = flat(0x9c5b4e, { roughness: 0.7 });
   M.jeans = flat(0x2f3e55, { roughness: 0.95 });
   M.workDark = flat(0x3b3f45, { roughness: 0.95 });
   M.workBlue = flat(0x274a78, { roughness: 0.95 });
@@ -241,19 +243,32 @@ export function makeMaterials() {
     M.tape = new THREE.MeshStandardMaterial({ map: canvasTex(cv), side: THREE.DoubleSide, roughness: 0.6 });
     M.tape.userData.texSize = 0.3;
   }
-  // Miesto pastatų langai
-  {
-    const cv = document.createElement('canvas'); cv.width = cv.height = 256; const c = cv.getContext('2d');
-    c.fillStyle = '#b9b4aa'; c.fillRect(0, 0, 256, 256);
-    const rr = rng(99);
+  // Miesto pastatų fasadai (keli variantai): plokščių siūlės, langai, balkonai, nutekėjimai
+  M.cityList = [];
+  [['#c9c4b8', '#8d8a82'], ['#d8d2c2', '#9a958a'], ['#b7bcc0', '#7f868c'], ['#cdbfa8', '#948672'], ['#e2ddd2', '#a39e94']].forEach((pal, pi) => {
+    const cv = document.createElement('canvas'); cv.width = cv.height = 512; const c = cv.getContext('2d'), rr = rng(99 + pi * 7);
+    c.fillStyle = pal[0]; c.fillRect(0, 0, 512, 512);
+    for (let k = 0; k < 9000; k++) { c.fillStyle = `rgba(${rr() > 0.5 ? 255 : 0},${rr() > 0.5 ? 255 : 0},${rr() > 0.5 ? 255 : 0},0.035)`; c.fillRect(rr() * 512, rr() * 512, 2 + rr() * 3, 2 + rr() * 6); }
+    const balc = pi % 2;
     for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
-      c.fillStyle = rr() > 0.8 ? '#e9d9a0' : (rr() > 0.5 ? '#3b4c5c' : '#56697a');
-      c.fillRect(x * 32 + 7, y * 32 + 8, 18, 17);
+      const X = x * 64, Y = y * 64;
+      c.strokeStyle = 'rgba(0,0,0,0.22)'; c.lineWidth = 1.5; c.strokeRect(X + 0.5, Y + 0.5, 64, 64);
+      const lit = rr() > 0.86, cur = rr();
+      c.fillStyle = '#f1efe9'; c.fillRect(X + 15, Y + 13, 34, 32);
+      const gr = c.createLinearGradient(0, Y + 15, 0, Y + 43); gr.addColorStop(0, lit ? '#e8d59a' : '#31404e'); gr.addColorStop(1, lit ? '#caa869' : '#586b7b');
+      c.fillStyle = gr; c.fillRect(X + 17, Y + 15, 30, 28);
+      c.fillStyle = '#f1efe9'; c.fillRect(X + 31, Y + 15, 2, 28);
+      if (cur > 0.6) { c.fillStyle = 'rgba(235,230,215,0.55)'; c.fillRect(X + 17, Y + 15, cur > 0.8 ? 30 : 12, 28); }
+      c.fillStyle = 'rgba(0,0,0,0.25)'; c.fillRect(X + 15, Y + 45, 34, 2);
+      if (balc && (x % 4 === 1 || x % 4 === 2)) { c.fillStyle = pal[1]; c.fillRect(X + 4, Y + 40, 56, 20); c.fillStyle = 'rgba(0,0,0,0.3)'; c.fillRect(X + 4, Y + 58, 56, 3); c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(X + 4, Y + 40, 56, 2); }
+      if (rr() > 0.7) { const g2 = c.createLinearGradient(0, Y + 47, 0, Y + 64); g2.addColorStop(0, 'rgba(40,36,30,0.22)'); g2.addColorStop(1, 'rgba(40,36,30,0)'); c.fillStyle = g2; c.fillRect(X + 18 + rr() * 20, Y + 47, 5, 17); }
     }
-    const tx = canvasTex(cv);
-    M.city = new THREE.MeshStandardMaterial({ map: tx, roughness: 0.8 });
-    M.city.userData.texSize = 24;
-  }
+    const m = new THREE.MeshStandardMaterial({ map: canvasTex(cv), roughness: 0.85 }); m.userData.texSize = 24; M.cityList.push(m);
+  });
+  M.city = M.cityList[0];
+  M.bark = flat(0x4b3d30, { roughness: 1 });
+  M.leaves = [0x35602a, 0x416f2f, 0x2c5124, 0x4d7a36].map(col => flat(col, { roughness: 0.95 }));
+  M.chrome = flat(0xd8dde2, { roughness: 0.18, metalness: 1 });
   return M;
 }
 
@@ -263,4 +278,54 @@ export function textTexture(draw, w = 256, h = 256) {
   draw(cv.getContext('2d'), w, h);
   const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
   return t;
+}
+
+/* ---------- Fotografinės PBR tekstūros ir dangaus panoramos (Poly Haven, CC0) ----------
+   Failai – tex/*.jpg; vieno failo versijoje jie įrašomi į window.DSS_ASSETS kaip data: URI.
+   Jei failo nepavyksta įkelti, lieka procedūrinė tekstūra. */
+const assetUrl = n => (window.DSS_ASSETS && window.DSS_ASSETS[n]) || `tex/${n}.jpg`;
+function loadImage(name) {
+  return new Promise(res => { const img = new Image(); img.onload = () => res(img); img.onerror = () => res(null); img.src = assetUrl(name); });
+}
+async function loadTex(name, srgb) {
+  const img = await loadImage(name); if (!img) return null;
+  const t = new THREE.Texture(img); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8;
+  if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.needsUpdate = true; return t;
+}
+// medžiaga: [tekstūros vardas, metrų viename pakartojime, atspalvis]
+const PHOTO = {
+  concrete: ['concrete2', 3, 0xffffff], concreteDark: ['concrete2', 3, 0xb9b9b4], concreteNew: ['concrete2', 3.4, 0xffffff],
+  dirt: ['dirt', 3.2, 0xffffff], dirtDark: ['soilwall', 3.4, 0xd8d0c8], gravel: ['gravel', 2.2, 0xffffff], asphalt: ['asphalt', 4, 0xffffff], bitumen: ['bitumen', 2.4, 0x9a9a9a],
+  wood: ['wood', 1.5, 0xffffff], woodOld: ['woodold', 1.6, 0xffffff], plywood: ['plywood', 1.8, 0xffffff], formwork: ['plywood', 1.8, 0xe08a5a],
+  brick: ['brick', 2.4, 0xffffff], brickSilicate: ['brick2', 2.0, 0xffffff], block: ['brick2', 2.8, 0xf0f2f4],
+  plaster: ['plaster', 2.6, 0xffffff], plasterOld: ['plaster', 2.6, 0xd9cba6], gypsum: ['plaster', 2.6, 0xf2f2ea],
+  rust: ['rust', 0.8, 0xb08a70], slate: ['slate', 1.6, 0xffffff], sheet: ['sheet', 1.6, 0xb9cadb], cabin: ['sheet', 1.6, 0xf2ecdc], cabinBlue: ['sheet', 1.6, 0x4a7fc0],
+};
+export async function applyPhotoTextures(M) {
+  const names = [...new Set(Object.values(PHOTO).map(p => p[0])), 'grass'];
+  const sets = {};
+  await Promise.all(names.map(async n => { const [d, nn, a] = await Promise.all([loadTex(n + '_d', true), loadTex(n + '_n', false), loadTex(n + '_a', false)]); sets[n] = { d, n: nn, a }; }));
+  for (const k in PHOTO) {
+    const [n, size, tint] = PHOTO[k], s = sets[n], m = M[k]; if (!s.d || !m) continue;
+    m.map = s.d; m.normalMap = s.n || null; m.color.setHex(tint);
+    if (s.a) { m.roughnessMap = s.a; m.aoMap = s.a; m.roughness = 1; }
+    m.normalScale.set(1, 1); m.userData.texSize = size; m.needsUpdate = true;
+  }
+  const g = sets.grass;
+  M.grass = new THREE.MeshStandardMaterial(g.d ? { map: g.d, normalMap: g.n, roughnessMap: g.a, roughness: 1, color: 0xa9c98c } : { color: 0x6f7466, roughness: 1 });
+  M.grass.userData.texSize = 5;
+}
+// Dangus: saulės padėtis panoramoje (u – horizontali koordinatė 0..1, elev – laipsniai), horizonto spalva rūkui
+export const SKY_META = {
+  day: { u: 0.5918, elev: 48.2, horizon: 0x9aa1b1, sun: 3.4, sunColor: 0xfff2e0, hemi: 0.5 },
+  morning: { u: 0.5977, elev: 20.0, horizon: 0xbdc3c5, sun: 3.0, sunColor: 0xffe2c0, hemi: 0.5 },
+  overcast: { u: 0.5859, elev: 22.9, horizon: 0x81868f, sun: 0.9, sunColor: 0xf0f2f6, hemi: 0.95 },
+};
+export async function loadSkies() {
+  const out = {};
+  await Promise.all(Object.keys(SKY_META).map(async k => {
+    const t = await loadTex('sky_' + k, true); if (!t) return;
+    t.mapping = THREE.EquirectangularReflectionMapping; t.wrapT = THREE.ClampToEdgeWrapping; t.anisotropy = 1; out[k] = t;
+  }));
+  return out;
 }

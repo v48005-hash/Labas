@@ -1,7 +1,11 @@
 // DSS patikra – žaidimo variklis: scena, judėjimas, apžiūra, vertinimas, ataskaita.
 import * as THREE from 'three';
 import { Sky } from '../vendor/Sky.js';
-import { makeMaterials } from './textures.js';
+import { makeMaterials, applyPhotoTextures, loadSkies, SKY_META } from './textures.js';
+import { EffectComposer } from '../vendor/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from '../vendor/jsm/postprocessing/RenderPass.js';
+import { GTAOPass } from '../vendor/jsm/postprocessing/GTAOPass.js';
+import { OutputPass } from '../vendor/jsm/postprocessing/OutputPass.js';
 import * as P from './props.js';
 import { LEVELS } from './levels.js';
 
@@ -29,14 +33,31 @@ const pmrem = new THREE.PMREMGenerator(renderer);
 const M = makeMaterials();
 P.setMaterials(M);
 
+let SKIES = {}, envCache = {};
+// Aukštos kokybės režimas: aplinkos šešėliavimas (GTAO) + MSAA per efektų grandinę
+let composer = null, renderPass = null, aoPass = null;
 function applyQuality() {
-  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, save.quality ? 2 : 1.25));
+  const pr = Math.min(devicePixelRatio || 1, save.quality ? 1.75 : 1.25);
+  renderer.setPixelRatio(pr);
   renderer.shadowMap.enabled = true;
   renderer.setSize(innerWidth, innerHeight, false);
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  if (composer) { composer.dispose(); composer = null; }
+  if (save.quality && !/[?&]beao/.test(location.search)) {
+    try {
+      const w = Math.round(innerWidth * pr), h = Math.round(innerHeight * pr);
+      const rt = new THREE.WebGLRenderTarget(w, h, { type: THREE.HalfFloatType, samples: 4 });
+      composer = new EffectComposer(renderer, rt); composer.setPixelRatio(1); composer.setSize(w, h);
+      renderPass = new RenderPass(scene, camera);
+      aoPass = new GTAOPass(scene, camera, w, h);
+      aoPass.updateGtaoMaterial({ radius: 0.9, distanceExponent: 1.4, thickness: 1.2, scale: 1.15, samples: 12, screenSpaceRadius: false });
+      aoPass.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, rings: 2, samples: 8 });
+      aoPass.blendIntensity = 0.9;
+      composer.addPass(renderPass); composer.addPass(aoPass); composer.addPass(new OutputPass());
+    } catch (e) { console.warn('Efektų grandinė neįjungta:', e); composer = null; }
+  }
 }
 addEventListener('resize', applyQuality);
-applyQuality();
 
 // ---------- Būsena ----------
 let scene = new THREE.Scene();
@@ -54,7 +75,7 @@ function disposeScene(s) {
     if (o.geometry) o.geometry.dispose();
     if (o.userData.ownTex && o.material) { o.material.map && o.material.map.dispose(); o.material.dispose(); }
   });
-  if (s.environment) s.environment.dispose();
+  if (s.environment && s.userData.ownEnv) s.environment.dispose();
 }
 
 function buildLevel(idx) {
@@ -62,22 +83,32 @@ function buildLevel(idx) {
   scene = new THREE.Scene();
   L = LEVELS[idx];
   W = { colliders: [], occluders: [], proxies: [], items: [], anims: [], idx };
-  const sunDir = new THREE.Vector3().setFromSphericalCoords(1, THREE.MathUtils.degToRad(90 - L.sun[0]), THREE.MathUtils.degToRad(L.sun[1]));
+  // Dangus – fotografinė panorama; saulės kryptis paimama iš jos. Atsarginis variantas – procedūrinis dangus.
+  const skyName = L.sky || 'day', meta = SKY_META[skyName], skyTex = SKIES[skyName];
+  let sunDir;
+  if (skyTex) {
+    const az = (meta.u - 0.5) * Math.PI * 2, el = THREE.MathUtils.degToRad(meta.elev);
+    sunDir = new THREE.Vector3(Math.cos(az) * Math.cos(el), Math.sin(el), Math.sin(az) * Math.cos(el));
+    scene.background = skyTex; scene.backgroundIntensity = L.skyGain ?? 1.5;
+    envCache[skyName] = envCache[skyName] || pmrem.fromEquirectangular(skyTex).texture;
+    scene.environment = envCache[skyName];
+    scene.environmentIntensity = L.interior ? 0.4 : 1.15;
+  } else {
+    sunDir = new THREE.Vector3().setFromSphericalCoords(1, THREE.MathUtils.degToRad(90 - L.sun[0]), THREE.MathUtils.degToRad(L.sun[1]));
+    const sky = new Sky(); sky.scale.setScalar(4000);
+    const u = sky.material.uniforms;
+    u.turbidity.value = 6; u.rayleigh.value = 1.6; u.mieCoefficient.value = 0.006; u.mieDirectionalG.value = 0.8;
+    u.sunPosition.value.copy(sunDir);
+    const envScene = new THREE.Scene(); envScene.add(sky);
+    scene.environment = pmrem.fromScene(envScene, 0, 1, 5000).texture; scene.userData.ownEnv = true;
+    scene.environmentIntensity = L.interior ? 0.22 : 0.55;
+    scene.add(sky);
+  }
+  const fogCol = new THREE.Color(skyTex ? meta.horizon : (L.fog || 0xb9c6d2));
+  scene.fog = new THREE.Fog(fogCol, 80, L.fogFar || 520);
+  renderer.toneMappingExposure = L.exposure ?? 0.64;
 
-  // Dangus + aplinkos atspindžiai
-  const sky = new Sky(); sky.scale.setScalar(4000);
-  const u = sky.material.uniforms;
-  u.turbidity.value = L.turbidity ?? 6; u.rayleigh.value = L.rayleigh ?? 1.6; u.mieCoefficient.value = 0.006; u.mieDirectionalG.value = 0.8;
-  u.sunPosition.value.copy(sunDir);
-  const envScene = new THREE.Scene(); envScene.add(sky);
-  scene.environment = pmrem.fromScene(envScene, 0, 1, 5000).texture;
-  scene.environmentIntensity = L.interior ? 0.22 : 0.55;
-  scene.add(sky);
-  const fogCol = new THREE.Color(L.fog || 0xb9c6d2);
-  scene.fog = new THREE.Fog(fogCol, 60, L.fogFar || 420);
-  renderer.toneMappingExposure = L.exposure ?? 0.5;
-
-  const sun = new THREE.DirectionalLight(0xfff1dc, L.sunPower ?? 3.2);
+  const sun = new THREE.DirectionalLight(skyTex ? meta.sunColor : 0xfff1dc, L.sunPower ?? (skyTex ? meta.sun : 3.2));
   const c = L.center || [0, 0];
   sun.position.set(c[0], L.floorY, c[1]).addScaledVector(sunDir, 120);
   sun.target.position.set(c[0], L.floorY, c[1]);
@@ -89,10 +120,10 @@ function buildLevel(idx) {
   sc.left = -R; sc.right = R; sc.top = R; sc.bottom = -R; sc.near = 10; sc.far = 260;
   sun.shadow.bias = -0.0003; sun.shadow.normalBias = 0.04;
   scene.add(sun, sun.target);
-  scene.add(new THREE.HemisphereLight(0xbcd4ee, 0x6b5f52, L.interior ? 0.35 : 0.75));
+  scene.add(new THREE.HemisphereLight(0xbcd4ee, 0x6b5f52, L.interior ? 0.3 : (skyTex ? meta.hemi : 0.75)));
 
   // Tolimas reljefas ir miestas
-  const landMat = new THREE.MeshStandardMaterial({ color: L.landColor || 0x6f7466, roughness: 1 });
+  const landMat = M.grass;
   const land = P.slabWithHoles(-800, -800, 800, 800, L.landHole ? [L.landHole] : [], landMat, -0.06, 0.1);
   land.traverse(m => { m.castShadow = false; }); scene.add(land);
   scene.add(P.city(L.cityR || 170, 48, idx + 3));
@@ -303,6 +334,7 @@ function startRun() {
   $('hudSite').innerHTML = `<b>${L.title}</b><br>${L.site}`;
   $('hudWeather').textContent = L.weatherShort || '';
   if (L.interior) flashlight.intensity = 60;
+  lookFrom = performance.now() + 300;
   setMode('play'); updateHud(); lockPointer(); startAmbient();
   toast('Patikra pradėta. Raskite pažeidimus!');
 }
@@ -394,7 +426,14 @@ canvas.addEventListener('mousedown', e => {
 });
 addEventListener('mouseup', e => { if (e.button === 2) zoom = false; });
 addEventListener('contextmenu', e => e.preventDefault());
-addEventListener('mousemove', e => { if (mode === 'play' && (document.pointerLockElement === canvas || e.buttons & 1)) look(e.movementX, e.movementY); });
+// Saugikliai: pirmas judesys po pelės „užrakinimo“ kai kuriose naršyklėse būna netikras šuolis
+let lookFrom = 0;
+document.addEventListener('pointerlockchange', () => { lookFrom = performance.now() + 150; });
+addEventListener('mousemove', e => {
+  if (mode !== 'play' || performance.now() < lookFrom) return;
+  if (Math.abs(e.movementX) > 250 || Math.abs(e.movementY) > 250) return;
+  if (document.pointerLockElement === canvas || (e.buttons & 1 && e.target === canvas)) look(e.movementX, e.movementY);
+});
 let lockLostAt = 0;
 document.addEventListener('pointerlockchange', () => {
   if (!document.pointerLockElement && mode === 'play' && !isTouch) { lockLostAt = performance.now(); setMode('pause'); }
@@ -455,14 +494,19 @@ function tick() {
     camera.lookAt(c[0], L.floorY + (L.menuLook ?? 3), c[1]);
     if (camera.fov !== 55) { camera.fov = 55; camera.updateProjectionMatrix(); }
   }
-  renderer.render(scene, camera);
+  if (composer) { renderPass.scene = aoPass.scene = scene; composer.render(dt); } else renderer.render(scene, camera);
 }
 
 // Pradžia: meniu fone – paskutinis atrakintas objektas
 let startIdx = 0; LEVELS.forEach((_, i) => { if (unlocked(i)) startIdx = i; });
 if (/[?&]atrakinti/.test(location.search)) startIdx = 2;
-buildLevel(Math.min(startIdx, LEVELS.length - 1));
-renderMenu(); setMode('menu'); tick();
+(async () => {
+  el.loading.classList.remove('hidden');
+  applyQuality();
+  [SKIES] = await Promise.all([loadSkies(), applyPhotoTextures(M)]);
+  buildLevel(Math.min(startIdx, LEVELS.length - 1));
+  renderMenu(); setMode('menu'); el.loading.classList.add('hidden'); tick();
+})();
 
 // Testavimo sąsaja
 window.__dss = {

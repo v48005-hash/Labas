@@ -381,10 +381,10 @@ export const LEVELS = [
 
 /* ================= 4. VIDAUS APDAILA ================= */
 {
-  id: 'apdaila', title: 'Vidaus apdaila, 2 aukštas', site: 'Daugiabutis „Šilo terasos“, Vilnius', short: 'Elektra, dulkės, evakuacija, dujų balionai.',
+  id: 'apdaila', sky: 'morning', title: 'Vidaus apdaila, 2 aukštas', site: 'Daugiabutis „Šilo terasos“, Vilnius', short: 'Elektra, dulkės, evakuacija, dujų balionai.',
   brief: 'Viduje – apdailos darbai: pjaunamos vagos instaliacijai, glaistoma, montuojamos pertvaros. Pastate drėgna, apšvietimas laikinas. Žibintuvėlis įjungiamas klavišu F.',
   weather: 'Patalpose +8 °C, drėgna, vietomis ant grindų stovi vanduo.', weatherShort: 'Patalpos · +8 °C · drėgna',
-  time: 540, floorY: 0, bounds: [-11.75, -6.75, 11.75, 6.75], spawn: [10.6, 0, PI / 2], center: [0, 0], sun: [24, 195], range: 7, interior: true, exposure: 0.62, menuR: 30, menuH: 12, menuLook: 0,
+  time: 540, floorY: 0, bounds: [-11.75, -6.75, 11.75, 6.75], spawn: [10.6, 0, PI / 2], center: [0, 0], sun: [24, 195], range: 7, interior: true, exposure: 0.8, skyGain: 1.3, menuR: 30, menuH: 12, menuLook: 0,
   build(c) {
     const { M, P } = c, B = P.B, H = 2.8;
     c.add(B(60, 0.2, 50, M.gravel, 0, -3.2, 0)); c.add(B(25, 3, 15, M.concrete, 0, -3, 0));
@@ -505,7 +505,7 @@ export const LEVELS = [
 
 /* ================= 5. STOGO DARBAI ================= */
 {
-  id: 'stogas', title: 'Plokščio stogo darbai', site: 'Daugiabutis „Šilo terasos“, Vilnius', short: 'Stogo kraštai, stoglangiai, ugnies darbai, vėjas.',
+  id: 'stogas', sky: 'morning', title: 'Plokščio stogo darbai', site: 'Daugiabutis „Šilo terasos“, Vilnius', short: 'Stogo kraštai, stoglangiai, ugnies darbai, vėjas.',
   brief: 'Paskutinis etapas viršuje: ant 15 m aukščio plokščio stogo klojama šilumos izoliacija ir prilydomoji danga. Naktį šalo, pučia stiprus vėjas.',
   weather: 'Giedra, −1 °C, vėjas 11 m/s. Ryte ant dangos – šerkšnas.', weatherShort: '−1 °C · vėjas 11 m/s · aukštis 15 m',
   time: 480, floorY: 15.4, bounds: [-13.6, -8.6, 13.6, 8.6], spawn: [-11.3, -4.5, -PI / 2], center: [0, 0], sun: [22, 150], range: 10, menuR: 32, menuH: 8, menuLook: 0, cityR: 150, rayleigh: 1.1,
@@ -628,10 +628,10 @@ export const LEVELS = [
 
 /* ================= 6. RENOVACIJA ================= */
 {
-  id: 'renovacija', title: 'Seno daugiabučio renovacija', site: 'Penkiaaukštis Žaliakalnyje, Kaunas', short: 'Asbestas, gyventojai statybvietėje, triukšmas, gaisras.',
+  id: 'renovacija', sky: 'overcast', title: 'Seno daugiabučio renovacija', site: 'Penkiaaukštis Žaliakalnyje, Kaunas', short: 'Asbestas, gyventojai statybvietėje, triukšmas, gaisras.',
   brief: 'Kitas objektas: 1974 m. statybos daugiabutis renovuojamas neiškeldinus gyventojų. Šiltinamas fasadas, ardomi balkonai, griaunamas ūkinis pastatas su šiferio stogu. Čia rizika kyla ne tik darbuotojams.',
   weather: 'Apniukę, +6 °C, vėjas 4 m/s.', weatherShort: '+6 °C · vėjas 4 m/s',
-  time: 540, floorY: 0, bounds: [-23.6, 1.2, 23.6, 22.6], spawn: [19, 19, 0.75], center: [0, 6], sun: [30, 100], range: 13, turbidity: 12, rayleigh: 0.8, exposure: 0.55, menuR: 30, menuH: 7, menuLook: 5, menuArc: [PI / 2, 0.8],
+  time: 540, floorY: 0, bounds: [-23.6, 1.2, 23.6, 22.6], spawn: [19, 19, 0.75], center: [0, 6], sun: [30, 100], range: 13, turbidity: 12, exposure: 0.74, skyGain: 1.25, menuR: 30, menuH: 7, menuLook: 5, menuArc: [PI / 2, 0.8],
   build(c) {
     const { M, P } = c, B = P.B, FH = 2.7;
     c.add(B(80, 0.2, 60, M.gravel, 0, -0.2, 8)); c.add(B(48, 0.02, 4, M.asphalt, 0, 0, 14));
