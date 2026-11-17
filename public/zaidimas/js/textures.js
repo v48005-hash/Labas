@@ -30,7 +30,7 @@ function fbm(size, seed, oct = 5, base = 4) {
 function canvasTex(cv, srgb = true) {
   const t = new THREE.CanvasTexture(cv);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  t.anisotropy = 8;
+  t.anisotropy = 4;
   if (srgb) t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
@@ -276,7 +276,7 @@ export function makeMaterials() {
 export function textTexture(draw, w = 256, h = 256) {
   const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
   draw(cv.getContext('2d'), w, h);
-  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 8;
+  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4;
   return t;
 }
 
@@ -289,7 +289,7 @@ function loadImage(name) {
 }
 async function loadTex(name, srgb) {
   const img = await loadImage(name); if (!img) return null;
-  const t = new THREE.Texture(img); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8;
+  const t = new THREE.Texture(img); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4;
   if (srgb) t.colorSpace = THREE.SRGBColorSpace; t.needsUpdate = true; return t;
 }
 // medžiaga: [tekstūros vardas, metrų viename pakartojime, atspalvis]

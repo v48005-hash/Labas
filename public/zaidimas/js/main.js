@@ -7,6 +7,7 @@ import { RenderPass } from '../vendor/jsm/postprocessing/RenderPass.js';
 import { GTAOPass } from '../vendor/jsm/postprocessing/GTAOPass.js';
 import { OutputPass } from '../vendor/jsm/postprocessing/OutputPass.js';
 import * as P from './props.js';
+import { freezeStatic } from './optimize.js';
 import { LEVELS } from './levels.js';
 
 const $ = id => document.getElementById(id);
@@ -17,7 +18,15 @@ if (isTouch) document.body.classList.add('touch');
 const SAVE_KEY = 'dss-patikra-v1';
 const save = (() => { try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; } catch { return {}; } })();
 save.best = save.best || {};
-if (save.quality === undefined) save.quality = isTouch ? 0 : 1;
+// Grafikos lygis: 0 – taupi, 1 – vidutinė (numatyta kompiuteryje), 2 – aukšta (su aplinkos šešėliavimu)
+if (save.gfx === undefined) save.gfx = isTouch ? 0 : 1;
+delete save.quality;
+const GFX = [
+  { name: 'taupi', pr: 0.75, shadow: 1024, shadowEvery: 6, lampEvery: 3, soft: false },
+  { name: 'vidutinė', pr: 1, shadow: 2048, shadowEvery: 2, lampEvery: 2, soft: false },
+  { name: 'aukšta', pr: 1.5, shadow: 2048, shadowEvery: 1, lampEvery: 1, soft: true },
+];
+const gfx = () => GFX[save.gfx] || GFX[1];
 if (save.sound === undefined) save.sound = 1;
 const persist = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch { /* privatus režimas */ } };
 
@@ -26,7 +35,7 @@ const canvas = $('view');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 const camera = new THREE.PerspectiveCamera(70, 1, 0.08, 900);
 camera.rotation.order = 'YXZ';
 const pmrem = new THREE.PMREMGenerator(renderer);
@@ -36,14 +45,23 @@ P.setMaterials(M);
 let SKIES = {}, envCache = {};
 // Aukštos kokybės režimas: aplinkos šešėliavimas (GTAO) + MSAA per efektų grandinę
 let composer = null, renderPass = null, aoPass = null;
+let dynScale = 1;   // automatinis raiškos mažinimas, kai kadrų per mažai
 function applyQuality() {
-  const pr = Math.min(devicePixelRatio || 1, save.quality ? 1.75 : 1.25);
+  const pr = Math.max(0.5, Math.min(devicePixelRatio || 1, gfx().pr) * dynScale);
   renderer.setPixelRatio(pr);
   renderer.shadowMap.enabled = true;
+  // minkšti šešėliai (PCFSoft) gerokai brangesni – tik aukštoje kokybėje
+  const st = gfx().soft ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
+  if (renderer.shadowMap.type !== st) { renderer.shadowMap.type = st; if (W) scene.traverse(o => { if (o.material) o.material.needsUpdate = true; }); }
   renderer.setSize(innerWidth, innerHeight, false);
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
   if (composer) { composer.dispose(); composer = null; }
-  if (save.quality && !/[?&]beao/.test(location.search)) {
+  if (W && W.sun) {
+    const sm = gfx().shadow;
+    if (W.sun.shadow.mapSize.x !== sm) { W.sun.shadow.mapSize.set(sm, sm); if (W.sun.shadow.map) { W.sun.shadow.map.dispose(); W.sun.shadow.map = null; } }
+    W.sun.shadow.needsUpdate = true;
+  }
+  if (save.gfx === 2 && !/[?&]beao/.test(location.search)) {
     try {
       const w = Math.round(innerWidth * pr), h = Math.round(innerHeight * pr);
       const rt = new THREE.WebGLRenderTarget(w, h, { type: THREE.HalfFloatType, samples: 4 });
@@ -80,6 +98,7 @@ function disposeScene(s) {
 
 function buildLevel(idx) {
   disposeScene(scene);
+  if (W) W.occluders.forEach(m => m.geometry.dispose());
   scene = new THREE.Scene();
   L = LEVELS[idx];
   W = { colliders: [], occluders: [], proxies: [], items: [], anims: [], idx };
@@ -113,9 +132,9 @@ function buildLevel(idx) {
   sun.position.set(c[0], L.floorY, c[1]).addScaledVector(sunDir, 120);
   sun.target.position.set(c[0], L.floorY, c[1]);
   sun.castShadow = true;
-  const sm = save.quality ? 4096 : 2048; sun.shadow.mapSize.set(sm, sm);
-  // taupiame režime šešėliai paskaičiuojami vieną kartą
-  if (!save.quality) { sun.shadow.autoUpdate = false; sun.shadow.needsUpdate = true; }
+  const sm = gfx().shadow; sun.shadow.mapSize.set(sm, sm);
+  // šešėliai perskaičiuojami ne kiekvieną kadrą (žr. tick)
+  sun.shadow.autoUpdate = false; sun.shadow.needsUpdate = true; W.sun = sun;
   const sc = sun.shadow.camera, R = L.shadowR || 46;
   sc.left = -R; sc.right = R; sc.top = R; sc.bottom = -R; sc.near = 10; sc.far = 260;
   sun.shadow.bias = -0.0003; sun.shadow.normalBias = 0.04;
@@ -128,9 +147,13 @@ function buildLevel(idx) {
   land.traverse(m => { m.castShadow = false; }); scene.add(land);
   scene.add(P.city(L.cityR || 170, 48, idx + 3));
 
+  // Žibintuvėlis – tik patalpose. Lauke jo šviesa nereikalinga, o kiekvienas šaltinis brangina kiekvieną pikselį.
+  // Patalpose jis lieka scenoje net išjungtas (intensyvumas 0), kad įjungiant nebūtų perkompiliuojamos medžiagos.
+  if (flashlight) camera.remove(flashlight, flashlight.target);
   flashlight = new THREE.SpotLight(0xfff4dd, 0, 26, 0.5, 0.5, 1.2);
   flashlight.position.set(0.2, -0.15, 0); flashlight.target.position.set(0, 0, -4);
-  camera.add(flashlight, flashlight.target); scene.add(camera);
+  if (L.interior) camera.add(flashlight, flashlight.target);
+  scene.add(camera);
 
   const ctx = {
     M, P, THREE, scene,
@@ -152,17 +175,24 @@ function buildLevel(idx) {
       return it;
     },
     anim(fn) { W.anims.push(fn); },
-    // taupiame režime dedama tik kas antra lempa (stipresnė)
+    // kiekvienas taškinis šaltinis brangina kiekvieną pikselį – žemesnėje kokybėje dedama tik dalis (stipresnių)
     lamp(x, y, z, power = 30, dist = 14, color = 0xffe9c0) {
-      const l = new THREE.PointLight(color, save.quality ? power : power * 1.7, dist, 1.6); l.position.set(x, y, z);
-      if (save.quality || (W.lamps = (W.lamps || 0) + 1) % 2) scene.add(l);
+      const every = gfx().lampEvery, l = new THREE.PointLight(color, power * (1 + (every - 1) * 0.7), dist, 1.6); l.position.set(x, y, z);
+      if (((W.lamps = (W.lamps || 0) + 1) - 1) % every === 0) scene.add(l);
       return l;
     },
   };
   L.build(ctx);
+  W.center = L.center;
+  const t0 = performance.now(), st = freezeStatic(scene, W);
+  W.stats = { ...st, ms: Math.round(performance.now() - t0) };
+  W.rayTargets = W.proxies.concat(W.occluders);
+  // nematomas žymeklis po žeme – kad pirmoji apžiūros žyma nesukeltų kompiliavimo trūkčiojimo
+  const warm = new THREE.Sprite(new THREE.SpriteMaterial({ depthTest: false, transparent: true, map: M.dirt.map }));
+  warm.position.set(0, -50, 0); warm.scale.setScalar(0.01); scene.add(warm);
   scene.updateMatrixWorld(true);
   player.x = L.spawn[0]; player.z = L.spawn[1]; player.yaw = L.spawn[2] || 0; player.pitch = 0;
-  flashlight.intensity = 0;
+  setLight(false);
 }
 
 // ---------- Judėjimas ----------
@@ -205,7 +235,7 @@ function look(dx, dy) {
 function findTarget() {
   ray.setFromCamera({ x: 0, y: 0 }, camera);
   ray.far = (L.range || 9) * (zoom ? 3 : 1);
-  const hits = ray.intersectObjects(W.proxies.concat(W.occluders), false);
+  const hits = ray.intersectObjects(W.rayTargets, false);
   const h = hits[0];
   target = h && h.object.userData.item && !h.object.userData.item.state ? h.object.userData.item : null;
   $('crosshair').classList.toggle('on', !!target);
@@ -273,8 +303,9 @@ function updateHud() {
 let toastT = 0;
 function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.remove('hidden'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.add('hidden'), 2600); }
 
+let stillFrames = 0;
 function setMode(m) {
-  mode = m;
+  mode = m; stillFrames = 0;
   el.menu.classList.toggle('hidden', m !== 'menu');
   el.brief.classList.toggle('hidden', m !== 'brief');
   el.inspect.classList.toggle('hidden', m !== 'inspect');
@@ -303,9 +334,13 @@ function renderMenu() {
   });
 }
 
+// Šešėliavimo programos sukompiliuojamos iš anksto (kol rodomas užkrovimo ekranas), kad žaidžiant nestrigtų
+async function precompile() {
+  try { await (renderer.compileAsync ? renderer.compileAsync(scene, camera) : renderer.compile(scene, camera)); } catch { /* nebūtina */ }
+}
 function withLoading(fn) {
   el.loading.classList.remove('hidden');
-  setTimeout(() => { fn(); el.loading.classList.add('hidden'); }, 40);
+  setTimeout(async () => { fn(); await precompile(); el.loading.classList.add('hidden'); }, 40);
 }
 
 function showBrief(i) {
@@ -333,7 +368,7 @@ function startRun() {
   run = { score: 0, found: 0, time: L.time, t0: performance.now() };
   $('hudSite').innerHTML = `<b>${L.title}</b><br>${L.site}`;
   $('hudWeather').textContent = L.weatherShort || '';
-  if (L.interior) flashlight.intensity = 60;
+  if (L.interior) setLight(true);
   lookFrom = performance.now() + 300;
   setMode('play'); updateHud(); lockPointer(); startAmbient();
   toast('Patikra pradėta. Raskite pažeidimus!');
@@ -381,7 +416,8 @@ function toggleNotes() {
   n.innerHTML = `<div class="eyebrow">Patikros užrašai</div>` + (done.length ? done.map(i => `<div class="n"><span class="${i.state === 'ok' ? (i.hazard ? 'c-bad' : 'c-ok') : 'c-miss'}">${i.state === 'ok' ? (i.hazard ? '⚠' : '✔') : '✖'}</span> ${i.name}${i.state === 'ok' && i.hazard ? ' – ' + i.ok : ''}</div>`).join('') : '<p>Dar nieko neapžiūrėjote.</p>');
   n.classList.remove('hidden');
 }
-function toggleLight() { flashlight.intensity = flashlight.intensity ? 0 : 60; }
+function setLight(on) { flashlight.userData.on = on; flashlight.intensity = on ? 60 : 0; }
+function toggleLight() { if (!L.interior) { toast('Žibintuvėlis reikalingas tik patalpose'); return; } setLight(!flashlight.userData.on); }
 
 // ---------- Garsas ----------
 let actx = null, amb = null;
@@ -460,8 +496,8 @@ if (isTouch) {
 $('btnResume').onclick = () => { setMode('play'); lockPointer(); };
 $('btnFinish').onclick = () => finishRun(false);
 $('btnQuit').onclick = () => { run = null; stopAmbient(); setMode('menu'); renderMenu(); };
-const qLabel = () => { $('btnQuality').textContent = 'Grafika: ' + (save.quality ? 'aukšta' : 'taupi'); $('btnSound').textContent = 'Garsas: ' + (save.sound ? 'įjungtas' : 'išjungtas'); };
-$('btnQuality').onclick = () => { save.quality = save.quality ? 0 : 1; persist(); applyQuality(); qLabel(); };
+const qLabel = () => { $('btnQuality').textContent = 'Grafika: ' + gfx().name; $('btnSound').textContent = 'Garsas: ' + (save.sound ? 'įjungtas' : 'išjungtas'); };
+$('btnQuality').onclick = () => { save.gfx = (save.gfx + 1) % GFX.length; dynScale = 1; persist(); applyQuality(); qLabel(); };
 $('btnSound').onclick = () => { save.sound = save.sound ? 0 : 1; persist(); qLabel(); save.sound ? startAmbient() : stopAmbient(); };
 qLabel();
 if (location.pathname.startsWith('/static/')) $('homeLink').classList.remove('hidden');
@@ -478,7 +514,7 @@ const clock = new THREE.Clock();
 let menuAng = 0, frame = 0;
 function tick() {
   requestAnimationFrame(tick);
-  const dt = Math.min(clock.getDelta(), 0.05), t = clock.elapsedTime;
+  const rawDt = clock.getDelta(), dt = Math.min(rawDt, 0.05), t = clock.elapsedTime;
   if (!W) return;
   for (const a of W.anims) a(t, dt);
   if (mode === 'play') {
@@ -494,7 +530,27 @@ function tick() {
     camera.lookAt(c[0], L.floorY + (L.menuLook ?? 3), c[1]);
     if (camera.fov !== 55) { camera.fov = 55; camera.updateProjectionMatrix(); }
   }
+  // kai scena uždengta langu (apžiūra, pauzė, aktas), ji nebeperpiešiama – taupoma baterija ir vaizdo plokštė
+  if ((mode === 'inspect' || mode === 'pause' || mode === 'report') && ++stillFrames > 2) return;
+  if (W.sun && frame % gfx().shadowEvery === 0) W.sun.shadow.needsUpdate = true;
+  if (mode !== 'play') frame++;
   if (composer) { renderPass.scene = aoPass.scene = scene; composer.render(dt); } else renderer.render(scene, camera);
+  if (mode === 'play') adapt(rawDt);
+}
+
+// Automatinis prisitaikymas: jei kadrų mažiau nei ~40 per sekundę, mažinama raiška, o vėliau ir grafikos lygis
+const perf = { t: 0, n: 0, good: 0 }, NO_ADAPT = /[?&]noadapt/.test(location.search);
+function adapt(dt) {
+  if (document.hidden || dt > 0.5 || NO_ADAPT) return;
+  perf.t += dt; perf.n++;
+  if (perf.t < 1.5) return;
+  const avg = perf.t / perf.n; perf.t = 0; perf.n = 0;
+  if (avg > 1 / 40) {
+    perf.good = 0;
+    if (composer) { save.gfx = 1; persist(); applyQuality(); qLabel(); toast('Grafika sumažinta, kad žaidimas nestrigtų'); return; }
+    if (dynScale > 0.55) { dynScale = Math.max(0.55, dynScale * 0.82); applyQuality(); return; }
+    if (save.gfx > 0) { save.gfx--; dynScale = 1; persist(); applyQuality(); qLabel(); toast('Grafika sumažinta, kad žaidimas nestrigtų'); }
+  } else if (avg < 1 / 55 && dynScale < 1 && ++perf.good >= 3) { perf.good = 0; dynScale = Math.min(1, dynScale * 1.12); applyQuality(); }
 }
 
 // Pradžia: meniu fone – paskutinis atrakintas objektas
@@ -505,6 +561,7 @@ if (/[?&]atrakinti/.test(location.search)) startIdx = 2;
   applyQuality();
   [SKIES] = await Promise.all([loadSkies(), applyPhotoTextures(M)]);
   buildLevel(Math.min(startIdx, LEVELS.length - 1));
+  await precompile();
   renderMenu(); setMode('menu'); el.loading.classList.add('hidden'); tick();
 })();
 
@@ -518,5 +575,5 @@ window.__dss = {
     player.x = x; player.z = z; const dy = it.pos[1] - (L.floorY + 1.7);
     player.yaw = Math.atan2(x - it.pos[0], z - it.pos[2]); player.pitch = Math.atan2(dy, dist);
   },
-  get scene() { return scene; }, zoom(v) { zoom = v; }, finish() { finishRun(false); }, info: () => renderer.info.render, blocked,
+  get scene() { return scene; }, stats: () => ({ ...W.stats, gfx: save.gfx, dynScale, pr: renderer.getPixelRatio() }), zoom(v) { zoom = v; }, finish() { finishRun(false); }, info: () => renderer.info.render, blocked,
 };

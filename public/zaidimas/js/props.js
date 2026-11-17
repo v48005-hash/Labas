@@ -87,6 +87,7 @@ export function fence(len, h = 2) {
 }
 
 // Darbuotojas. o: helmet(spalva|null), vest, harness, pose: stand|work|kneel|sit, top, mask, ears, glasses
+const helmetMat = {};
 export function worker(o = {}) {
   const { helmet = 0xf5f5f0, vest = true, harness = false, pose = 'stand', top = M.workBlue, mask = false, ears = false, glasses = false, vestMat = M.hivis } = o;
   const g = G(), body = G();
@@ -148,7 +149,7 @@ export function worker(o = {}) {
   head.add(B(0.036, 0.006, 0.006, M.lip, 0, -0.058, 0.086));
   const hair = sh(new THREE.Mesh(new THREE.SphereGeometry(0.104, 14, 10, 0, Math.PI * 2, 0, Math.PI * 0.55), M.hair)); hair.scale.set(0.96, 1.15, 1.04); hair.position.set(0, 0.008, -0.012); head.add(hair);
   if (helmet !== null) {
-    const hm = new THREE.MeshStandardMaterial({ color: helmet, roughness: 0.32 });
+    const hm = helmetMat[helmet] || (helmetMat[helmet] = new THREE.MeshStandardMaterial({ color: helmet, roughness: 0.32 }));
     const dome = sh(new THREE.Mesh(new THREE.SphereGeometry(0.122, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2), hm)); dome.scale.set(0.98, 1.0, 1.1); dome.position.y = 0.045; head.add(dome);
     const rim = sh(new THREE.Mesh(new THREE.CylinderGeometry(0.128, 0.132, 0.016, 20), hm)); rim.scale.z = 1.1; rim.position.y = 0.045; head.add(rim);
     const peak = sh(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.105, 0.012, 14, 1, false, -0.9, 1.8), hm)); peak.position.set(0, 0.043, 0.075); head.add(peak);

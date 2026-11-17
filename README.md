@@ -45,8 +45,9 @@ Reikia apeiti objektą, apžiūrėti įtartinas vietas ir kiekvienai parinkti te
 - Valdymas: `W A S D` – judėti, pelė – dairytis, `E` – tikrinti, `Z` – priartinti, `F` – žibintuvėlis,
   `Tab` – užrašai, `Enter` – baigti patikrą. Telefone – jutiklinė svirtis ir mygtukai.
 - Grafika: three.js (įdėta į `public/zaidimas/vendor`) su aplinkos šešėliavimu (GTAO); fotografinės PBR tekstūros ir
-  dangaus panoramos iš [Poly Haven](https://polyhaven.com) (CC0 licencija) – `public/zaidimas/tex/`. Pauzės meniu galima
-  perjungti „Grafika: taupi“, jei įrenginys silpnesnis.
+  dangaus panoramos iš [Poly Haven](https://polyhaven.com) (CC0 licencija) – `public/zaidimas/tex/`. Pauzės meniu – trys grafikos lygiai
+  (taupi / vidutinė / aukšta); jei kadrų per mažai, žaidimas pats sumažina raišką ir grafikos lygį.
+  Nejudantys objektai įkeliant lygį sujungiami (`js/optimize.js`), šešėliavimo programos kompiliuojamos iš anksto.
 - Turinys: `public/zaidimas/js/levels.js`. Skaitinės ribos (1,3 m, 1 m aptvaras su 0,15 m papėde,
   75°, IP44, 8 m/s, 85 dB(A) ir kt.) – iš DSS žinyno; teisės aktų numeriai žaidime necituojami.
   Tai mokomoji priemonė, ne teisinė konsultacija.
